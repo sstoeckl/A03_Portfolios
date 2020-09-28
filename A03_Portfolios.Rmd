@@ -1,6 +1,6 @@
 ---
 title: "Portfoliomanagement and Financial Analysis - Assignment 3"
-subtitle: "Submit until Monday 2019-09-30, 13:00"
+subtitle: "Submit until Monday 2020-10-07, 13:00"
 author: "Lastname, Surname"
 output: html_notebook
 ---
