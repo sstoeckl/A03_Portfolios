@@ -10,7 +10,7 @@ rm(list = ls())
 ```
 
 ```{r load_packs}
-pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk)
+pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk,dplyr,devtools,ggrepel)
 ```
 %>% to pipe
 
@@ -70,7 +70,71 @@ stock.returns.timeseries.xts
 
 
 a)  As off now, we always perform the following steps before doing anything portfolio related: Check the summary/basic statistics and moments of the assets. Plot and check for (multivariate) normality (OPTIONAL). Check the correlations and do a scatterplot. Check the covariance/correlation structure.
+
+?lapply
+
+```{r}
+stock.returns.timeseries.mu.xts <- lapply(stock.returns.timeseries.xts,FUN=mean)
+
+stock.returns.timeseries.mu.xts
+```
+Calculate sigma (standard deviation) for each stock
+```{r}
+stock.returns.timeseries.sigma.xts <- lapply(stock.returns.timeseries.xts,FUN=sd)
+
+stock.returns.timeseries.sigma.xts
+```
+Calculate correlation matrix
+```{r}
+cormatrix <- cor(stock.returns.timeseries.xts)
+cormatrix
+````
+
+Plot the correlations
+```{r}
+chart.Correlation(R=stock.returns.timeseries.xts,method = "pearson"
+                  )
+````
+
+Calculate the covariance matrix
+```{r}
+covmatrix <- cov(stock.returns.timeseries.xts, use = "everything", method = "pearson")
+covmatrix
+```
+
 b)  Plot the average return of the assets against their standard deviation. Are there any dominated assets? Plot the efficient frontier using `chart.EfficientFrontier` and `chart.EF.Weights` (also check the `demo(demo_efficient_frontier)` from the `portfolioAnalytics`-package.
+
+##Calculate mu and sigma and visualize them in a plot
+
+```{r}
+meanstocks <- stocks.returns.monthly %>%
+    group_by(symbol) %>%
+    summarize(mu = mean(Stock.returns, na.rm=TRUE))
+
+stocks.returns.monthly
+meanstocks
+
+````
+
+ sdstocks <- stocks.returns.monthly %>%
+    group_by(symbol) %>%
+      summarize(sigma = sd(Stock.returns, na.rm=TRUE))
+ 
+ sigmamu <- left_join(sdstocks, meanstocks, by = character())
+sigmamuggplot <- ggplot(sigmamu, aes(sigma, mu))+
+  geom_point()+
+  geom_label_repel(aes(label = symbol),
+                  box.padding   = 0.2,
+                  point.padding = 0.5,
+                  label.size = 0.4,
+                  segment.color = 'grey50', size = 1.5)+
+  theme_classic()
+ sigmamuggplot 
+
+
+```
+
+
 c)	Now comes the fun: Work through the vignette of the `portfolioAnalytics`-package
 (`vignette("portfolio_vignette")`), set a full investment constraint and limit the portfolio weights to be 'long only' and calculate minimum-variance/maximum-return and quadratic utility portfolios.
 c)	Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using `chart.EfficientFrontierOverlay` to highlight the differences.
