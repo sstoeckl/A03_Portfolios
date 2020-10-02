@@ -72,22 +72,145 @@ covmatrix <- cov(stock.returns.timeseries_xts, use = "everything", method = "pea
 covmatrix
 ```
 
-
-
-
-
-
-
 b)  Plot the average return of the assets against their standard deviation. Are there any dominated assets? Plot the efficient frontier using `chart.EfficientFrontier` and `chart.EF.Weights` (also check the `demo(demo_efficient_frontier)` from the `portfolioAnalytics`-package.
+
+## Calculate mu and sigma and visualize them in a plot
+Calculating Mu
+```{r}
+meanstocks <- stock.returns.monthly %>%
+    dplyr::group_by(symbol) %>%
+  dplyr::summarize(mu = mean(Stock.returns, na.rm=TRUE))
+meanstocks
+```
+Calculating sigma
+```{r}
+sdstocks <- stock.returns.monthly %>%
+    dplyr::group_by(symbol) %>%
+  dplyr::summarize(sigma = sd(Stock.returns, na.rm=TRUE))
+sdstocks
+```
+Merge Mu and Sigma together
+```{r}
+sigmamu <- left_join(sdstocks, meanstocks, by = "symbol")
+sigmamu
+```
+Plotting Mu and Sigma
+```{r}
+sigmamuggplot <- ggplot(sigmamu, aes(sigma, mu))+
+  geom_point()+
+  geom_label_repel(aes(label = symbol),
+                  box.padding   = 0.2,
+                  point.padding = 0.1,
+                  label.size = 0.2,
+                  segment.color = 'grey50', size = 2.5)+                      theme_classic()
+
+sigmamuggplot
+```
 c)	Now comes the fun: Work through the vignette of the `portfolioAnalytics`-package
 (`vignette("portfolio_vignette")`), set a full investment constraint and limit the portfolio weights to be 'long only' and calculate minimum-variance/maximum-return and quadratic utility portfolios.
+
+"long only"
+```{r}
+port <- portfolio.spec(assets = colnames(stock.returns.timeseries_xts),
+                       category_labels = stockselection)
+port <- add.constraint(portfolio=port, type="long_only")
+
+meanvar.portf <- add.objective(portfolio=port, type="return", name="mean")
+meanvar.portf <- add.objective(portfolio=port, type="risk", name="StdDev")
+
+summary(meanvar.portf, digits=2)
+
+prt_ef <- create.EfficientFrontier(R=stock.returns.timeseries_xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
+
+chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+
+chart.EF.Weights(prt_ef, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+full investment (the same just for the full investment)
+```{r}
+portfull <- portfolio.spec(assets = colnames(stock.returns.timeseries_xts))
+
+portfull <- add.constraint(portfolio=portfull, type="full_investment")
+
+meanvar.portf.full <- add.objective(portfolio=portfull, type="return", name="mean")
+meanvar.portf.full <- add.objective(portfolio=portfull, type="risk", name="StdDev")
+
+prt_ef_full <- create.EfficientFrontier(R=stock.returns.timeseries_xts, portfolio=portfull, type="mean-StdDev", match.col = "StdDev")
+
+chart.EfficientFrontier(prt_ef_full, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+
+chart.EF.Weights(prt_ef_full, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+Minimum varriance
+```{r}
+port_l <- portfolio.spec(assets = colnames(stock.returns.timeseries_xts))
+port_l <- add.constraint(portfolio = port_l,
+type = "long_only")
+
+minvar <- add.objective(portfolio = port_l, type = "risk", name = "var")
+opt_minvar <- optimize.portfolio(R=stock.returns.timeseries_xts, portfolio = minvar, optimize_method = "ROI", trace = TRUE)
+
+print(opt_minvar)
+
+plot(opt_minvar, risk.col="StdDev", return.col="mean",
+      main="Minimum Variance Optimization", chart.assets=TRUE,
+      xlim=c(0, 0.1), ylim=c(0,0.012))
+```
+Maximize mean return with ROI (exactly the same just maximizing the mean return)
+```{r}
+maxret <-add.objective(portfolio=port_l, type="return", name="mean")
+opt_maxret <- optimize.portfolio(R=stock.returns.timeseries_xts, portfolio=maxret,optimize_method="ROI", trace=TRUE)
+
+print(opt_maxret)
+
+plot(opt_maxret, risk.col="StdDev", return.col="mean",
+       main="Maximum Return Optimization", chart.assets=TRUE,
+       xlim=c(0, 0.15), ylim=c(0,0.013))
+```
+Calculate quadratic utility portfolio
+```{r}
+qu <- add.objective(portfolio=port_l, type="return", name="mean")
+qu <- add.objective(portfolio=qu, type="risk", name="var", risk_aversion=0.25)
+opt_qu <- optimize.portfolio(R=stock.returns.timeseries_xts, portfolio=qu, optimize_method="ROI", trace=TRUE)
+
+print(opt_qu)
+
+plot(opt_qu, risk.col="StdDev", return.col="mean",
+      main="Quadratic Utility Optimization", chart.assets=TRUE,
+      xlim=c(0, 0.15), ylim=c(0, 0.015))
+```
+
+
+
 c)	Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using `chart.EfficientFrontierOverlay` to highlight the differences.
+
+Short selling
+```{r}
+portf.list <- combine.portfolios(list(port, port_l))
+legend.labels <- c("Full Investment", "Long Only")
+
+chart.EfficientFrontierOverlay(R=stock.returns.timeseries_xts, portfolio_list=portf.list, type="mean-StdDev", match.col="StdDev", legend.loc="topleft", legend.labels=legend.labels, cex.legend=0.6, labels.assets=FALSE, pch.assets=1)
+```
+
 d)	Play around with the constraints and see what happens. Illustrate using `chart.EfficientFrontierOverlay`.
 
+```{r}
+port_c <- add.constraint(portfolio=port, type="diversification", div_target=0.7)
+
+port_c <- add.constraint(portfolio=port_c, type="box", min=0.05, max=0.4)
+
+portf.list.c <- combine.portfolios(list(port, port_c, port_l))
+
+legend.labels <- c("Full Investment", "Constraints", "Long Only")
+
+chart.EfficientFrontierOverlay(R=stock.returns.timeseries_xts, portfolio_list=portf.list.c, type="mean-StdDev", match.col="StdDev", legend.loc="topleft", legend.labels=legend.labels, cex.legend=0.6, labels.assets=FALSE, pch.assets=1)
+```
 
 ## Exercise 2: Do it yourself
 
 In this exercise you first download the IBoxx Euro Corporate All Maturities ("IBCRPAL") and the EuroStoxx ("DJES50I") index from Datastream - monthly data as long as possible. We will check the calculations of `R`. Calculate discrete monthly returns.
+
+
 
 a)	Stats/Normality (see A1)
 b)	Get the necessary input parameters (mu, sigma, please using variables, I don't want to see manual numbers in your code) and calculate the Minimum-Variance-Portfolio (manually in R). Then do it using the `portfolioAnalytics`-package.
@@ -109,6 +232,137 @@ $w_MP=\frac{\Sigma^{-1}\cdot 1'}{1\cdot\Sigma^{-1}\cdot 1'}$
 where 1 is a vector of ones with dimension equal to the number of assets. Similarly one can calculate the tangency portfolio as
 $w_TP=\frac{\Sigma^{-1}\cdot (\mu-r_f)'}{1\cdot\Sigma^{-1}\cdot (\mu-r_f)'}$.
 
+
+Create a Correlation-Matrix "R"
+```{r}
+x1 <- c(1.00, 0.90, 0.90, 0.90, 1.00, 0.00, 0.90, 0.00, 1.00)
+R <- matrix(x1, 3)
+colnames(R) <- c("A", "B", "C")
+rownames(R) <- c("A", "B", "C")
+R
+```
+Define Mu (10%) and Standard Deviation (20%)
+```{r}
+mu <- matrix(c(.1, .1, .1), 3)
+sd <- matrix(c(.20, .20, .20), 3)
+mu
+sd
+```
+Create a Covariance Matrix
+```{r}
+covariance_matrix <- diag(sd)*R*diag(sd)
+covariance_matrix
+```
+Now we can calculate the Minimum-Variance-Portfolio 
+```{r}
+onevector <- matrix(c(1, 1, 1), 1)
+wmvpcalctop <- solve(covariance_matrix)%*%t(onevector)
+wmvpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%t(onevector))
+wmvp <- wmvpcalctop/wmvpcalcbottom
+wmvp
+```
+Tangency Portfolio (rf=3%)
+```{r}
+wtpcalctop <- (solve(covariance_matrix)%*%(mu-0.03))
+wtpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%(mu-0.03))
+wtp <- wtpcalctop/wtpcalcbottom
+wtp   # weights are equal to the MVP
+```
+
 So to get used to the necessary tools, we use the package "matrixcalc" wherein we have a function `is.positive.semi.definite()` that can check covariance/correlation matrices for positive semidefiniteness. In the package `Matrix` we find a function `nearPD` that can help us to create a valid correlation matrix. Try and calculate the weights of the MVP and the TP, and then calculate portfolio mean and variance using $\mu_P=w\cdot \mu'$ and $\sigma_P^2=w\cdot \Sigma\cdot w'$ for the MVP and the TP as well as the weight vector w=(-1,1,1). Do this for the faulty matrix as well as the corrected one. What do you observe?
+
+Test: Are the matrices definite?
+```{r}
+is.positive.semi.definite(R) 
+#FALSE means that the matrix is not positive semi-definite. -> One Eigenvalue is less than zero.
+is.positive.definite(covariance_matrix) 
+# FALSE means as well that the matrix is not positive definite. As soon as one eigenvalues is less than zero, then the matrix is not positive semi-definite. 
+```
+Compute the nearest positive definite matrix with the help of nearPD and create a new covariance matrix
+```{r}
+R2 <- nearPD(R,keepDiag = TRUE)
+R2 <- matrix(c( 1.00000, 0.74341, 0.74341,
+0.74341, 1.00000, 0.10532,
+0.74341, 0.10532, 1.00000)
+, 3)
+covmat2 <- diag(sd)*R2*diag(sd)
+```
+
+Test did it work?
+```{r}
+is.positive.definite(R2) 
+is.positive.definite(covmat2)
+```
+Calculate the new Minimum-Variance Portfolio
+```{r}
+wmvpcalctop2 <- solve(covmat2)%*%t(onevector)
+wmvpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%t(onevector))
+wmvp2 <- wmvpcalctop2/wmvpcalcbottom2
+wmvp2
+
+```
+Mu
+```{r}
+mumvp <- t(wmvp)%*%mu
+mumvp2 <- wmvp2[,1]%*%mu
+mumvp2 #Mu didn't change, still 10%
+```
+Standard Deviation
+```{r}
+sdmvpcalc <- t(wmvp)%*%R%*%wmvp
+sdmvp <- sqrt(sdmvpcalc)
+sdmvpcalc2 <- t(wmvp2)%*%R2%*%wmvp2
+sdmvp2 <- sqrt(sdmvpcalc2)
+sdmvp2 #Standard Deviation didn't change, still .48%
+```
+Calculate the new Tangency Portfolio (rf=3%)
+```{r}
+wtpcalctop2 <- (solve(covmat2)%*%(mu-0.03))
+wtpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%(mu-0.03))
+wtp2 <- wtpcalctop2/wtpcalcbottom2
+wtp2 #Weights again equal to MVP
+```
+Mu
+```{r}
+muwtp <- t(wtp)%*%mu
+muwtp2 <- wtp2[,1]%*%mu
+muwtp2 #Mu didn't change, still 10%
+```
+Standard Deviation
+```{r}
+sdwtpcalc <- t(wtp)%*%R%*%wtp
+sdwtp <- sqrt(sdwtpcalc)
+sdwtpcalc2 <- t(wtp2)%*%R2%*%wtp2
+sdwtp2 <- sqrt(sdwtpcalc2)
+sdwtp2 #Standard Deviation didn't change, still .48%
+```
+
+-1,1,1 portfolio
+```{r}
+wv <- matrix(c(-1, 1, 1),3)
+wv
+```
+Mu 
+```{r}
+muwv <- wv[,1]%*%mu
+muwv
+```
+Standard Deviation
+```{r}
+sdwvcalc <- t(wv)%*%R%*%wv
+sdwv <- sqrt(sdwvcalc)
+
+#In sqrt(sdwvcalc) : NaNs produced
+
+sdwvcalc <- t(wmvp2)%*%R2%*%wmvp2
+sdwv2 <- sqrt(sdwvcalc)
+sdwv2 #Standard Deviation also .48%
+```
+
+
+
+
+
+
 
 
