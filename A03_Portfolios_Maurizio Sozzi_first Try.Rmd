@@ -553,7 +553,7 @@ A negative Sharpe ratio means that the performance of a manager or portfolio is 
 __tangency portfolio manually__ maximize the sharp ratio
 
 
-weight of an aptimal risky portfolio
+weight of an optimal risky portfolio
 ```{r}
 weight_eurostoxx1 <- (mu_eurostoxx_numeric*sigma_iboxx^2)-(mu_iboxx_numeric*covarianz_xy)
 weight_eurostoxx2 <- (mu_eurostoxx_numeric*sigma_iboxx^2)+(mu_iboxx_numeric*sigma_eurostoxx^2)-((mu_eurostoxx_numeric+mu_iboxx_numeric)*covarianz_xy)
@@ -583,6 +583,8 @@ sr_tangencyportfolio
 __calculate slope__
 
 slope of the CAL would be the Sharpratio = -0.0268
+
+
 
 
 
