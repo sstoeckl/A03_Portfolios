@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Lastname, Surname" />
+<meta name="author" content="Köffel, Fabian" />
 
 
 <title>Portfoliomanagement and Financial Analysis - Assignment 3</title>
@@ -1746,7 +1746,7 @@ summary {
 
 <h1 class="title toc-ignore">Portfoliomanagement and Financial Analysis - Assignment 3</h1>
 <h3 class="subtitle">Submit until Monday 2020-10-07, 13:00</h3>
-<h4 class="author">Lastname, Surname</h4>
+<h4 class="author">Köffel, Fabian</h4>
 
 </div>
 
@@ -1754,21 +1754,131 @@ summary {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGFjbWFuOjpwX2xvYWQodGlkeXZlcnNlLHRpZHlxdWFudCxGRmRvd25sb2FkLFBvcnRmb2xpb0FuYWx5dGljcyx0c2liYmxlLG1hdHJpeGNhbGMsTWF0cml4KVxuYGBgIn0= -->
-<pre class="r"><code>pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGFjbWFuOjpwX2xvYWQodGlkeXZlcnNlLHRpZHlxdWFudCxGRmRvd25sb2FkLFBvcnRmb2xpb0FuYWx5dGljcyx0c2liYmxlLG1hdHJpeGNhbGMsTWF0cml4LCB0aW1ldGspXG5gYGAifQ== -->
+<pre class="r"><code>pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix, timetk)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p><strong>Please</strong> remember to put your assignment solutions in <code>rmd</code> format using <strong>many</strong> chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1! Also, each student has to select his own set of 10 stocks having data available as of <code>2000-01-01</code>. Select by Sharpe-ratio, dominance or any other method (e.g. matching your first name).</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2suc2VsZWN0aW9uIDwtIGMoXCJBTVpOXCIsXCJZVU1cIixcIlBHXCIsXCJKTkpcIixcIk1TRlRcIixcIkFYUFwiLFwiQkFDXCIsXCJGRFhcIixcIkZcIixcIkhEXCIpICU+JVxudHFfZ2V0KGdldD0gXCJzdG9jay5wcmljZXNcIiwgZnJvbSA9XCIyMDAwLTAxLTAxXCIsIHRvID0gXCIyMDE4LTA4LTMxXCIpICU+JVxuICBncm91cF9ieShzeW1ib2wpXG5gYGAifQ== -->
+<pre class="r"><code>stock.selection &lt;- c(&quot;AMZN&quot;,&quot;YUM&quot;,&quot;PG&quot;,&quot;JNJ&quot;,&quot;MSFT&quot;,&quot;AXP&quot;,&quot;BAC&quot;,&quot;FDX&quot;,&quot;F&quot;,&quot;HD&quot;) %&gt;%
+tq_get(get= &quot;stock.prices&quot;, from =&quot;2000-01-01&quot;, to = &quot;2018-08-31&quot;) %&gt;%
+  group_by(symbol)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0ZXMgPC0gYXMueWVhcm1vbihzdG9jay5zZWxlY3Rpb24kZGF0ZSlcbnN0b2NrLnNlbGVjdGlvbiA8LSBhZGRfY29sdW1uKHN0b2NrLnNlbGVjdGlvbiwgZGF0ZXMpXG5zdG9jay5zZWxlY3Rpb24kZGF0ZSA8LSBOVUxMXG5gYGAifQ== -->
+<pre class="r"><code>dates &lt;- as.yearmon(stock.selection$date)
+stock.selection &lt;- add_column(stock.selection, dates)
+stock.selection$date &lt;- NULL</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2suc2VsZWN0aW9uIDwtIHNlbGVjdChzdG9jay5zZWxlY3Rpb24sIHN5bWJvbCxkYXRlcyxvcGVuLCBoaWdoLCBsb3csIGNsb3NlLCB2b2x1bWUsIGFkanVzdGVkKVxuYGBgIn0= -->
+<pre class="r"><code>stock.selection &lt;- select(stock.selection, symbol,dates,open, high, low, close, volume, adjusted)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2sucmV0dXJucyA8LSBzdG9jay5zZWxlY3Rpb24gJT4lXG4gIHRxX3RyYW5zbXV0ZShzZWxlY3Q9YWRqdXN0ZWQsIG11dGF0ZV9mdW4gPSBwZXJpb2RSZXR1cm4sIGNvbF9yZW5hbWUgPSBcIlJldHVyblwiIClcbmBgYCJ9 -->
+<pre class="r"><code>stock.returns &lt;- stock.selection %&gt;%
+  tq_transmute(select=adjusted, mutate_fun = periodReturn, col_rename = &quot;Return&quot; )</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2sucmV0dXJucyA8LSBwaXZvdF93aWRlcihzdG9jay5yZXR1cm5zLCBuYW1lc19mcm9tID0gc3ltYm9sLCB2YWx1ZXNfZnJvbSA9IFJldHVybikgJT4lXG4gIHRrX3h0cyhkYXRlX3ZhciA9IGRhdGVzLCBzaWxlbnQgPSBUUlVFKVxuYGBgIn0= -->
+<pre class="r"><code>stock.returns &lt;- pivot_wider(stock.returns, names_from = symbol, values_from = Return) %&gt;%
+  tk_xts(date_var = dates, silent = TRUE)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 <div id="exercise-1-optimzing-portfolios" class="section level2">
 <h2>Exercise 1: Optimzing portfolios</h2>
 <p>Take your personal dataset of 10 stocks, set the time-frame to January 2000/ August 2018 (use a year-month format - either <code>as.yearmon</code> from <code>zoo</code> or <code>yearmonth</code> from <code>tsibble</code>) and calculate monthly simple returns (if you have not done so yet)! Use <code>pivot_wider()</code> and <code>tk_xts()</code> to make a <code>xts</code> (timeseries) from it (having ten columns with simple returns calculated from adjusted prices).</p>
 <ol style="list-style-type: lower-alpha">
-<li>As off now, we always perform the following steps before doing anything portfolio related: Check the summary/basic statistics and moments of the assets. Plot and check for (multivariate) normality (OPTIONAL). Check the correlations and do a scatterplot. Check the covariance/correlation structure.</li>
+<li>As off now, we <strong>always</strong> perform the following steps before doing anything portfolio related: Check the summary/basic statistics and moments of the assets. Plot and check for (multivariate) normality (OPTIONAL). Check the correlations and do a scatterplot. Check the covariance/correlation structure.</li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2sucmV0dXJucyAlPiVcbiAgc3VtbWFyeSgpXG5cbnNpZyA8LSBsYXBwbHkoc3RvY2sucmV0dXJucywgRlVOID0gc2QpXG5tdSA8LSBsYXBwbHkoc3RvY2sucmV0dXJucywgRlVOID0gbWVhbilcbmBgYCJ9 -->
+<pre class="r"><code>stock.returns %&gt;%
+  summary()
+
+sig &lt;- lapply(stock.returns, FUN = sd)
+mu &lt;- lapply(stock.returns, FUN = mean)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY29yKHN0b2NrLnJldHVybnMsIHkgPSBOVUxMKVxuYGBgIn0= -->
+<pre class="r"><code>cor(stock.returns, y = NULL)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY292KHN0b2NrLnJldHVybnMsIHkgPSBOVUxMKVxuYGBgIn0= -->
+<pre class="r"><code>cov(stock.returns, y = NULL)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnQuQ29ycmVsYXRpb24oUj1zdG9jay5yZXR1cm5zLG1ldGhvZCA9IFwicGVhcnNvblwiKVxuYGBgIn0= -->
+<pre class="r"><code>chart.Correlation(R=stock.returns,method = &quot;pearson&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="2" style="list-style-type: lower-alpha">
 <li>Plot the average return of the assets against their standard deviation. Are there any dominated assets? Plot the efficient frontier using <code>chart.EfficientFrontier</code> and <code>chart.EF.Weights</code> (also check the <code>demo(demo_efficient_frontier)</code> from the <code>portfolioAnalytics</code>-package.</li>
-<li>Now comes the fun: Work through the vignette of the <code>portfolioAnalytics</code>-package (<code>vignette(&quot;portfolio_vignette&quot;)</code>), set a full investment constraint and limit the portfolio weights to be ‘long only’ and calculate minimum-variance/maximum-return and quadratic utility portfolios.</li>
-<li>Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using <code>chart.EfficientFrontierOverlay</code> to highlight the differences.</li>
-<li>Play around with the constraints and see what happens. Illustrate using <code>chart.EfficientFrontierOverlay</code>.</li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdHRpbmdfc3RvY2tzIDwtIHN0b2NrLnNlbGVjdGlvbiAlPiVcbiAgdHFfdHJhbnNtdXRlKHNlbGVjdD1hZGp1c3RlZCwgbXV0YXRlX2Z1biA9IHBlcmlvZFJldHVybiwgY29sX3JlbmFtZSA9IFwiUmV0dXJuXCIgKVxuXG5zaWdtdSA8LSBwbG90dGluZ19zdG9ja3MgJT4lXG4gIGRwbHlyOjpncm91cF9ieShzeW1ib2wpICU+JVxuICBkcGx5cjo6c3VtbWFyaXNlKG11PW1lYW4oUmV0dXJuKSxzaWdtYT1zZChSZXR1cm4pKVxuXG5nZ3Bsb3Qoc2lnbXUsYWVzKHggPSBzaWdtYSwgeSA9IG11LCBsYWJlbD1zeW1ib2wpKSArIGdlb21fcG9pbnQoYWxwaGEgPTAuNikgKyBzY2FsZV94X2xvZzEwKCkgKyBzY2FsZV95X2xvZzEwKCkgKyBnZW9tX3RleHQoYWVzKGxhYmVsPXN5bWJvbCksaGp1c3Q9MCwgdmp1c3Q9MClcbmBgYCJ9 -->
+<pre class="r"><code>plotting_stocks &lt;- stock.selection %&gt;%
+  tq_transmute(select=adjusted, mutate_fun = periodReturn, col_rename = &quot;Return&quot; )
+
+sigmu &lt;- plotting_stocks %&gt;%
+  dplyr::group_by(symbol) %&gt;%
+  dplyr::summarise(mu=mean(Return),sigma=sd(Return))
+
+ggplot(sigmu,aes(x = sigma, y = mu, label=symbol)) + geom_point(alpha =0.6) + scale_x_log10() + scale_y_log10() + geom_text(aes(label=symbol),hjust=0, vjust=0)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Amazon dominates all other stocks, because its return is the highest, but YUM is concerning the return dominated by Amazon, but concerning the sigma Amazon is much riskier than YUM. YUM could be seen in this plot as efficient.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnQuRUYuV2VpZ2h0cyhzaWdtdSlcbmBgYCJ9 -->
+<pre class="r"><code>chart.EF.Weights(sigmu)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3IgaW4gVXNlTWV0aG9kKFwiY2hhcnQuRUYuV2VpZ2h0c1wiKSA6IFxuICBubyBhcHBsaWNhYmxlIG1ldGhvZCBmb3IgJ2NoYXJ0LkVGLldlaWdodHMnIGFwcGxpZWQgdG8gYW4gb2JqZWN0IG9mIGNsYXNzIFwiYygndGJsX2RmJywgJ3RibCcsICdkYXRhLmZyYW1lJylcIlxuIn0= -->
+<pre><code>Error in UseMethod(&quot;chart.EF.Weights&quot;) : 
+  no applicable method for &#39;chart.EF.Weights&#39; applied to an object of class &quot;c(&#39;tbl_df&#39;, &#39;tbl&#39;, &#39;data.frame&#39;)&quot;</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGVtbyhkZW1vX2VmZmljaWVudF9mcm9udGllcilcbmBgYCJ9 -->
+<pre class="r"><code>demo(demo_efficient_frontier)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="3" style="list-style-type: lower-alpha">
+<li><p>Now comes the fun: Work through the vignette of the <code>portfolioAnalytics</code>-package (<code>vignette(&quot;portfolio_vignette&quot;)</code>), set a full investment constraint and limit the portfolio weights to be ‘long only’ and calculate minimum-variance/maximum-return and quadratic utility portfolios.</p></li>
+<li><p>Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using <code>chart.EfficientFrontierOverlay</code> to highlight the differences.</p></li>
+<li><p>Play around with the constraints and see what happens. Illustrate using <code>chart.EfficientFrontierOverlay</code>.</p></li>
 </ol>
 </div>
 <div id="exercise-2-do-it-yourself" class="section level2">
@@ -1794,7 +1904,7 @@ summary {
 <!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUG9ydGZvbGlvbWFuYWdlbWVudCBhbmQgRmluYW5jaWFsIEFuYWx5c2lzIC0gQXNzaWdubWVudCAzIgpzdWJ0aXRsZTogIlN1Ym1pdCB1bnRpbCBNb25kYXkgMjAyMC0xMC0wNywgMTM6MDAiCmF1dGhvcjogIkxhc3RuYW1lLCBTdXJuYW1lIgpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sKLS0tCgpgYGB7ciBsb2FkX3BhY2tzfQpwYWNtYW46OnBfbG9hZCh0aWR5dmVyc2UsdGlkeXF1YW50LEZGZG93bmxvYWQsUG9ydGZvbGlvQW5hbHl0aWNzLHRzaWJibGUsbWF0cml4Y2FsYyxNYXRyaXgpCmBgYAoKKipQbGVhc2UqKiByZW1lbWJlciB0byBwdXQgeW91ciBhc3NpZ25tZW50IHNvbHV0aW9ucyBpbiBgcm1kYCBmb3JtYXQgdXNpbmcgKiptYW55KiogY2h1bmtzIGFuZCBwdXR0aW5nIHJlYWRhYmxlIHRleHQgaW4gYmV0d2Vlbiwgc2ltaWxhciB0byBteSBleGFtcGxlcyBnaXZlbiBpbiBSZXNlYXJjaCBNZXRob2RzIGFuZCBBc3NpZ25tZW50IDEhIEFsc28sIGVhY2ggc3R1ZGVudCBoYXMgdG8gc2VsZWN0IGhpcyBvd24gc2V0IG9mIDEwIHN0b2NrcyBoYXZpbmcgZGF0YSBhdmFpbGFibGUgYXMgb2YgYDIwMDAtMDEtMDFgLiBTZWxlY3QgYnkgU2hhcnBlLXJhdGlvLCBkb21pbmFuY2Ugb3IgYW55IG90aGVyIG1ldGhvZCAoZS5nLiBtYXRjaGluZyB5b3VyIGZpcnN0IG5hbWUpLgoKIyMgRXhlcmNpc2UgMTogT3B0aW16aW5nIHBvcnRmb2xpb3MKClRha2UgeW91ciBwZXJzb25hbCBkYXRhc2V0IG9mIDEwIHN0b2Nrcywgc2V0IHRoZSB0aW1lLWZyYW1lIHRvIEphbnVhcnkgMjAwMC8gQXVndXN0IDIwMTggKHVzZSBhIHllYXItbW9udGggZm9ybWF0IC0gZWl0aGVyIGBhcy55ZWFybW9uYCBmcm9tIGB6b29gIG9yIGB5ZWFybW9udGhgIGZyb20gYHRzaWJibGVgKSBhbmQgY2FsY3VsYXRlIG1vbnRobHkgc2ltcGxlIHJldHVybnMgKGlmIHlvdSBoYXZlIG5vdCBkb25lIHNvIHlldCkhIFVzZSBgcGl2b3Rfd2lkZXIoKWAgYW5kIGB0a194dHMoKWAgdG8gbWFrZSBhIGB4dHNgICh0aW1lc2VyaWVzKSBmcm9tIGl0IChoYXZpbmcgdGVuIGNvbHVtbnMgd2l0aCBzaW1wbGUgcmV0dXJucyBjYWxjdWxhdGVkIGZyb20gYWRqdXN0ZWQgcHJpY2VzKS4KCmEpICBBcyBvZmYgbm93LCB3ZSBhbHdheXMgcGVyZm9ybSB0aGUgZm9sbG93aW5nIHN0ZXBzIGJlZm9yZSBkb2luZyBhbnl0aGluZyBwb3J0Zm9saW8gcmVsYXRlZDogQ2hlY2sgdGhlIHN1bW1hcnkvYmFzaWMgc3RhdGlzdGljcyBhbmQgbW9tZW50cyBvZiB0aGUgYXNzZXRzLiBQbG90IGFuZCBjaGVjayBmb3IgKG11bHRpdmFyaWF0ZSkgbm9ybWFsaXR5IChPUFRJT05BTCkuIENoZWNrIHRoZSBjb3JyZWxhdGlvbnMgYW5kIGRvIGEgc2NhdHRlcnBsb3QuIENoZWNrIHRoZSBjb3ZhcmlhbmNlL2NvcnJlbGF0aW9uIHN0cnVjdHVyZS4KYikgIFBsb3QgdGhlIGF2ZXJhZ2UgcmV0dXJuIG9mIHRoZSBhc3NldHMgYWdhaW5zdCB0aGVpciBzdGFuZGFyZCBkZXZpYXRpb24uIEFyZSB0aGVyZSBhbnkgZG9taW5hdGVkIGFzc2V0cz8gUGxvdCB0aGUgZWZmaWNpZW50IGZyb250aWVyIHVzaW5nIGBjaGFydC5FZmZpY2llbnRGcm9udGllcmAgYW5kIGBjaGFydC5FRi5XZWlnaHRzYCAoYWxzbyBjaGVjayB0aGUgYGRlbW8oZGVtb19lZmZpY2llbnRfZnJvbnRpZXIpYCBmcm9tIHRoZSBgcG9ydGZvbGlvQW5hbHl0aWNzYC1wYWNrYWdlLgpjKQlOb3cgY29tZXMgdGhlIGZ1bjogV29yayB0aHJvdWdoIHRoZSB2aWduZXR0ZSBvZiB0aGUgYHBvcnRmb2xpb0FuYWx5dGljc2AtcGFja2FnZQooYHZpZ25ldHRlKCJwb3J0Zm9saW9fdmlnbmV0dGUiKWApLCBzZXQgYSBmdWxsIGludmVzdG1lbnQgY29uc3RyYWludCBhbmQgbGltaXQgdGhlIHBvcnRmb2xpbyB3ZWlnaHRzIHRvIGJlICdsb25nIG9ubHknIGFuZCBjYWxjdWxhdGUgbWluaW11bS12YXJpYW5jZS9tYXhpbXVtLXJldHVybiBhbmQgcXVhZHJhdGljIHV0aWxpdHkgcG9ydGZvbGlvcy4KYykJQWxsb3cgZm9yIHNob3J0IHNlbGxpbmcgKGRlbGV0ZSB0aGUgbG9uZyBvbmx5IGNvbnN0cmFpbnQpLiBXaGF0IGhhcHBlbnMgdG8geW91ciBwb3J0Zm9saW8/IElsbHVzdHJhdGUgdXNpbmcgdGhlIGVmZmljaWVudCBmcm9udGllciEgQ29tYmluZSBlZmZpY2llbnQgZnJvbnRpZXJzIHVzaW5nIGBjaGFydC5FZmZpY2llbnRGcm9udGllck92ZXJsYXlgIHRvIGhpZ2hsaWdodCB0aGUgZGlmZmVyZW5jZXMuCmQpCVBsYXkgYXJvdW5kIHdpdGggdGhlIGNvbnN0cmFpbnRzIGFuZCBzZWUgd2hhdCBoYXBwZW5zLiBJbGx1c3RyYXRlIHVzaW5nIGBjaGFydC5FZmZpY2llbnRGcm9udGllck92ZXJsYXlgLgoKCiMjIEV4ZXJjaXNlIDI6IERvIGl0IHlvdXJzZWxmCgpJbiB0aGlzIGV4ZXJjaXNlIHlvdSBmaXJzdCBkb3dubG9hZCB0aGUgSUJveHggRXVybyBDb3Jwb3JhdGUgQWxsIE1hdHVyaXRpZXMgKCJJQkNSUEFMIikgYW5kIHRoZSBFdXJvU3RveHggKCJESkVTNTBJIikgaW5kZXggZnJvbSBEYXRhc3RyZWFtIC0gbW9udGhseSBkYXRhIGFzIGxvbmcgYXMgcG9zc2libGUuIFdlIHdpbGwgY2hlY2sgdGhlIGNhbGN1bGF0aW9ucyBvZiBgUmAuIENhbGN1bGF0ZSBkaXNjcmV0ZSBtb250aGx5IHJldHVybnMuCgphKQlTdGF0cy9Ob3JtYWxpdHkgKHNlZSBBMSkKYikJR2V0IHRoZSBuZWNlc3NhcnkgaW5wdXQgcGFyYW1ldGVycyAobXUsIHNpZ21hLCBwbGVhc2UgdXNpbmcgdmFyaWFibGVzLCBJIGRvbid0IHdhbnQgdG8gc2VlIG1hbnVhbCBudW1iZXJzIGluIHlvdXIgY29kZSkgYW5kIGNhbGN1bGF0ZSB0aGUgTWluaW11bS1WYXJpYW5jZS1Qb3J0Zm9saW8gKG1hbnVhbGx5IGluIFIpLiBUaGVuIGRvIGl0IHVzaW5nIHRoZSBgcG9ydGZvbGlvQW5hbHl0aWNzYC1wYWNrYWdlLgpjKQlOb3cgYXNzdW1lIGEgcmlzay1mcmVlIHJhdGUgb2YgMCBhbmQgY2FsY3VsYXRlIHRoZSBUYW5nZW5jeS1Qb3J0Zm9saW8gbWFudWFsbHkgYW5kIHdpdGggdGhlIGBwb3J0Zm9saW9BbmFseXRpY3NgLXBhY2thZ2UuIFdoYXQgaXMgdGhlIHNsb3BlIG9mIHRoZSBDQUw/IFBsb3QgYSBtdS1zaWdtYS1kaWFncmFtIGluY2x1ZGluZyBhbGwgcmVsZXZhbnQgaW5mb3JtYXRpb24uIFdoYXQgYXJlIHlvdXIgcG9ydGZvbGlvIHdlaWdodHMgYW5kIHdlaWdodGVkIHJldHVybnM/IEFkZGl0aW9uYWxseSBhbGxvdyBmb3Igc2hvcnRzZWxsaW5nIGFuZCBjaGVjayBmb3IgY2hhbmdlcy4KZCkJTm93LCBhc3N1bWUgYSByaXNrLWF2ZXJzaW9uIG9mIEE9MSwgMiBvciAzIGFuZCBjYWxjdWxhdGUgeW91ciBvcHRpbWFsIGNvbXBsZXRlIHBvcnRmb2xpbyAoc2VlIGxlY3R1cmUgc2xpZGVzKS4KCgojIyBFeGVyY2lzZSAzOiBDb3ZhcmlhbmNlIFByb2JsZW1zCgpJbiB0aGUgZmlyc3QgcGFydCBvZiB0aGlzIGV4ZXJjaXNlIHdlIHdpbGwgYmUgY2hlY2tpbmcgY292YXJpYW5jZXMgYW5kIHBvcnRmb2xpb3MgdGhhdCBtaWdodCBvY2N1ciBmcm9tIGZhdWx0eSBjb3JyZWxhdGlvbiBtYXRyaWNlcy4gV2UgdXNlIHRoZSBjb3ZhcmlhbmNlIG1hdHJpeCBmcm9tIG91ciBleGFtcGxlCmBgYHtyIGNvdiwgZWNobz1GQUxTRSwgZmlnLmNhcD0iRmF1bHR5IGNvdmFyaWFuY2UgbWF0cml4Iiwgb3V0LndpZHRoID0gJzYwJSd9CmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJjb3YucG5nIikKYGBgCndoZXJlIHdlIGFkZGl0aW9uYWxseSBhc3N1bWUgbWVhbiByZXR1cm5zIG9mIDEwJSBmb3IgYWxsIHRocmVlIGFzc2V0cy4KSWYgd2UgZGVmaW5lICRcbXUkIHRvIGJlIHRoZSB2ZWN0b3Igb2YgbWVhbiByZXR1cm5zIGFuZCAkXHNpZ21hJCB0aGUgdmVjdG9yIG9mIHN0YW5kYXJkIGRldmlhdGlvbnMsIHdlIGNhbiBjYWxjdWxhdGUgdGhlIGNvdmFyaWFuY2UgbWF0cml4ICRcU2lnbWEkIGFzICRcU2lnbWE9ZGlhZyhcc2lnbWEpXGNkb3QgUlxjZG90IGRpYWcoXHNpZ21hKSQsIHdoZXJlICRSJCBpcyB0aGUgY29ycmVsYXRpb24gbWF0cml4IChhcyBpbiB0aGUgdGFibGUgYWJvdmUpIGFuZCAkZGlhZyQgcHV0cyB0aGUgdGhyZWUgc3RhbmRhcmQgZGV2aWF0aW9ucyBpbnRvIHRoZSBkaWFnb25hbCBvZiBhIG1hdHJpeC4KCk5vdyB3ZSBjYW4gY2FsY3VsYXRlIHRoZSBNaW5pbXVtLVZhcmlhbmNlLVBvcnRmb2xpbyB1c2luZyBtYXRyaXggY2FsY3VsdXMgYXMKJHdfTVA9XGZyYWN7XFNpZ21hXnstMX1cY2RvdCAxJ317MVxjZG90XFNpZ21hXnstMX1cY2RvdCAxJ30kCndoZXJlIDEgaXMgYSB2ZWN0b3Igb2Ygb25lcyB3aXRoIGRpbWVuc2lvbiBlcXVhbCB0byB0aGUgbnVtYmVyIG9mIGFzc2V0cy4gU2ltaWxhcmx5IG9uZSBjYW4gY2FsY3VsYXRlIHRoZSB0YW5nZW5jeSBwb3J0Zm9saW8gYXMKJHdfVFA9XGZyYWN7XFNpZ21hXnstMX1cY2RvdCAoXG11LXJfZiknfXsxXGNkb3RcU2lnbWFeey0xfVxjZG90IChcbXUtcl9mKSd9JC4KClNvIHRvIGdldCB1c2VkIHRvIHRoZSBuZWNlc3NhcnkgdG9vbHMsIHdlIHVzZSB0aGUgcGFja2FnZSAibWF0cml4Y2FsYyIgd2hlcmVpbiB3ZSBoYXZlIGEgZnVuY3Rpb24gYGlzLnBvc2l0aXZlLnNlbWkuZGVmaW5pdGUoKWAgdGhhdCBjYW4gY2hlY2sgY292YXJpYW5jZS9jb3JyZWxhdGlvbiBtYXRyaWNlcyBmb3IgcG9zaXRpdmUgc2VtaWRlZmluaXRlbmVzcy4gSW4gdGhlIHBhY2thZ2UgYE1hdHJpeGAgd2UgZmluZCBhIGZ1bmN0aW9uIGBuZWFyUERgIHRoYXQgY2FuIGhlbHAgdXMgdG8gY3JlYXRlIGEgdmFsaWQgY29ycmVsYXRpb24gbWF0cml4LiBUcnkgYW5kIGNhbGN1bGF0ZSB0aGUgd2VpZ2h0cyBvZiB0aGUgTVZQIGFuZCB0aGUgVFAsIGFuZCB0aGVuIGNhbGN1bGF0ZSBwb3J0Zm9saW8gbWVhbiBhbmQgdmFyaWFuY2UgdXNpbmcgJFxtdV9QPXdcY2RvdCBcbXUnJCBhbmQgJFxzaWdtYV9QXjI9d1xjZG90IFxTaWdtYVxjZG90IHcnJCBmb3IgdGhlIE1WUCBhbmQgdGhlIFRQIGFzIHdlbGwgYXMgdGhlIHdlaWdodCB2ZWN0b3Igdz0oLTEsMSwxKS4gRG8gdGhpcyBmb3IgdGhlIGZhdWx0eSBtYXRyaXggYXMgd2VsbCBhcyB0aGUgY29ycmVjdGVkIG9uZS4gV2hhdCBkbyB5b3Ugb2JzZXJ2ZT8KCgo=</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUG9ydGZvbGlvbWFuYWdlbWVudCBhbmQgRmluYW5jaWFsIEFuYWx5c2lzIC0gQXNzaWdubWVudCAzIgpzdWJ0aXRsZTogIlN1Ym1pdCB1bnRpbCBNb25kYXkgMjAyMC0xMC0wNywgMTM6MDAiCmF1dGhvcjogIkvDtmZmZWwsIEZhYmlhbiIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3IgbG9hZF9wYWNrc30KcGFjbWFuOjpwX2xvYWQodGlkeXZlcnNlLHRpZHlxdWFudCxGRmRvd25sb2FkLFBvcnRmb2xpb0FuYWx5dGljcyx0c2liYmxlLG1hdHJpeGNhbGMsTWF0cml4LCB0aW1ldGspCmBgYAoKKipQbGVhc2UqKiByZW1lbWJlciB0byBwdXQgeW91ciBhc3NpZ25tZW50IHNvbHV0aW9ucyBpbiBgcm1kYCBmb3JtYXQgdXNpbmcgKiptYW55KiogY2h1bmtzIGFuZCBwdXR0aW5nIHJlYWRhYmxlIHRleHQgaW4gYmV0d2Vlbiwgc2ltaWxhciB0byBteSBleGFtcGxlcyBnaXZlbiBpbiBSZXNlYXJjaCBNZXRob2RzIGFuZCBBc3NpZ25tZW50IDEhIEFsc28sIGVhY2ggc3R1ZGVudCBoYXMgdG8gc2VsZWN0IGhpcyBvd24gc2V0IG9mIDEwIHN0b2NrcyBoYXZpbmcgZGF0YSBhdmFpbGFibGUgYXMgb2YgYDIwMDAtMDEtMDFgLiBTZWxlY3QgYnkgU2hhcnBlLXJhdGlvLCBkb21pbmFuY2Ugb3IgYW55IG90aGVyIG1ldGhvZCAoZS5nLiBtYXRjaGluZyB5b3VyIGZpcnN0IG5hbWUpLgoKYGBge3IgTXkgc3RvY2sgc2VsZWN0aW9ufQpzdG9jay5zZWxlY3Rpb24gPC0gYygiQU1aTiIsIllVTSIsIlBHIiwiSk5KIiwiTVNGVCIsIkFYUCIsIkJBQyIsIkZEWCIsIkYiLCJIRCIpICU+JQp0cV9nZXQoZ2V0PSAic3RvY2sucHJpY2VzIiwgZnJvbSA9IjIwMDAtMDEtMDEiLCB0byA9ICIyMDE4LTA4LTMxIikgJT4lCiAgZ3JvdXBfYnkoc3ltYm9sKQpgYGAKCmBgYHtyIFRyYW5zZm9ybWluZyBkYXRlIHdpdGggdGhlIFpvbyBwYWNrYWdlfQpkYXRlcyA8LSBhcy55ZWFybW9uKHN0b2NrLnNlbGVjdGlvbiRkYXRlKQpzdG9jay5zZWxlY3Rpb24gPC0gYWRkX2NvbHVtbihzdG9jay5zZWxlY3Rpb24sIGRhdGVzKQpzdG9jay5zZWxlY3Rpb24kZGF0ZSA8LSBOVUxMCmBgYAoKYGBge3IgTW92aW5nIHRoZSBjb2x1bW4gZGF0ZXMgdG8gdGhlIHNlY29uZCBwb3NpdGlvbiBpbiBvcmRlciB0byBtYWtlIGl0IG1vcmUgYXBwbGljYWJsZX0Kc3RvY2suc2VsZWN0aW9uIDwtIHNlbGVjdChzdG9jay5zZWxlY3Rpb24sIHN5bWJvbCxkYXRlcyxvcGVuLCBoaWdoLCBsb3csIGNsb3NlLCB2b2x1bWUsIGFkanVzdGVkKQpgYGAKCmBgYHtyIE5vdyBnZXR0aW5nIHRoZSBtb250aGx5IHJldHVybnMgZm9yIG15IHN0b2Nrc30Kc3RvY2sucmV0dXJucyA8LSBzdG9jay5zZWxlY3Rpb24gJT4lCiAgdHFfdHJhbnNtdXRlKHNlbGVjdD1hZGp1c3RlZCwgbXV0YXRlX2Z1biA9IHBlcmlvZFJldHVybiwgY29sX3JlbmFtZSA9ICJSZXR1cm4iICkKYGBgCgpgYGB7ciBVc2luZyB0aGUgcGl2b193aWRlciBhbmQgdGtfeHRzIGZ1bmN0aW9uIGluIG9yZGVyIHRvIGNyZWF0ZSB0aGUgY29sdW1uc30Kc3RvY2sucmV0dXJucyA8LSBwaXZvdF93aWRlcihzdG9jay5yZXR1cm5zLCBuYW1lc19mcm9tID0gc3ltYm9sLCB2YWx1ZXNfZnJvbSA9IFJldHVybikgJT4lCiAgdGtfeHRzKGRhdGVfdmFyID0gZGF0ZXMsIHNpbGVudCA9IFRSVUUpCmBgYAoKIyMgRXhlcmNpc2UgMTogT3B0aW16aW5nIHBvcnRmb2xpb3MKClRha2UgeW91ciBwZXJzb25hbCBkYXRhc2V0IG9mIDEwIHN0b2Nrcywgc2V0IHRoZSB0aW1lLWZyYW1lIHRvIEphbnVhcnkgMjAwMC8gQXVndXN0IDIwMTggKHVzZSBhIHllYXItbW9udGggZm9ybWF0IC0gZWl0aGVyIGBhcy55ZWFybW9uYCBmcm9tIGB6b29gIG9yIGB5ZWFybW9udGhgIGZyb20gYHRzaWJibGVgKSBhbmQgY2FsY3VsYXRlIG1vbnRobHkgc2ltcGxlIHJldHVybnMgKGlmIHlvdSBoYXZlIG5vdCBkb25lIHNvIHlldCkhIFVzZSBgcGl2b3Rfd2lkZXIoKWAgYW5kIGB0a194dHMoKWAgdG8gbWFrZSBhIGB4dHNgICh0aW1lc2VyaWVzKSBmcm9tIGl0IChoYXZpbmcgdGVuIGNvbHVtbnMgd2l0aCBzaW1wbGUgcmV0dXJucyBjYWxjdWxhdGVkIGZyb20gYWRqdXN0ZWQgcHJpY2VzKS4KCmEpICBBcyBvZmYgbm93LCB3ZSBfX2Fsd2F5c19fIHBlcmZvcm0gdGhlIGZvbGxvd2luZyBzdGVwcyBiZWZvcmUgZG9pbmcgYW55dGhpbmcgcG9ydGZvbGlvIHJlbGF0ZWQ6IENoZWNrIHRoZSBzdW1tYXJ5L2Jhc2ljIHN0YXRpc3RpY3MgYW5kIG1vbWVudHMgb2YgdGhlIGFzc2V0cy4gUGxvdCBhbmQgY2hlY2sgZm9yIChtdWx0aXZhcmlhdGUpIG5vcm1hbGl0eSAoT1BUSU9OQUwpLiBDaGVjayB0aGUgY29ycmVsYXRpb25zIGFuZCBkbyBhIHNjYXR0ZXJwbG90LiBDaGVjayB0aGUgY292YXJpYW5jZS9jb3JyZWxhdGlvbiBzdHJ1Y3R1cmUuCgpgYGB7ciBEb2luZyBiYXNpYyBkZXNrcmlwdGl2ZSBTdGF0aXN0aWN9CnN0b2NrLnJldHVybnMgJT4lCiAgc3VtbWFyeSgpCgpzaWcgPC0gbGFwcGx5KHN0b2NrLnJldHVybnMsIEZVTiA9IHNkKQptdSA8LSBsYXBwbHkoc3RvY2sucmV0dXJucywgRlVOID0gbWVhbikKYGBgCgpgYGB7ciBDb3JyZWxhdGlvbn0KY29yKHN0b2NrLnJldHVybnMsIHkgPSBOVUxMKQpgYGAKCmBgYHtyIENvdmFyaWFuen0KY292KHN0b2NrLnJldHVybnMsIHkgPSBOVUxMKQpgYGAKCmBgYHtyfQpjaGFydC5Db3JyZWxhdGlvbihSPXN0b2NrLnJldHVybnMsbWV0aG9kID0gInBlYXJzb24iKQpgYGAKCmIpICBQbG90IHRoZSBhdmVyYWdlIHJldHVybiBvZiB0aGUgYXNzZXRzIGFnYWluc3QgdGhlaXIgc3RhbmRhcmQgZGV2aWF0aW9uLiBBcmUgdGhlcmUgYW55IGRvbWluYXRlZCBhc3NldHM/IFBsb3QgdGhlIGVmZmljaWVudCBmcm9udGllciB1c2luZyBgY2hhcnQuRWZmaWNpZW50RnJvbnRpZXJgIGFuZCBgY2hhcnQuRUYuV2VpZ2h0c2AgKGFsc28gY2hlY2sgdGhlIGBkZW1vKGRlbW9fZWZmaWNpZW50X2Zyb250aWVyKWAgZnJvbSB0aGUgYHBvcnRmb2xpb0FuYWx5dGljc2AtcGFja2FnZS4KCmBgYHtyIFBsb3R0aW5nIHRoZSBhdmVyYWdlIHJldHVybiBvZiB0aGUgYXNzZXRzIGFnYWluc3QgdGhlaXIgc3RhbmRhcmQgZGV2aWF0aW9ufQpwbG90dGluZ19zdG9ja3MgPC0gc3RvY2suc2VsZWN0aW9uICU+JQogIHRxX3RyYW5zbXV0ZShzZWxlY3Q9YWRqdXN0ZWQsIG11dGF0ZV9mdW4gPSBwZXJpb2RSZXR1cm4sIGNvbF9yZW5hbWUgPSAiUmV0dXJuIiApCgpzaWdtdSA8LSBwbG90dGluZ19zdG9ja3MgJT4lCiAgZHBseXI6Omdyb3VwX2J5KHN5bWJvbCkgJT4lCiAgZHBseXI6OnN1bW1hcmlzZShtdT1tZWFuKFJldHVybiksc2lnbWE9c2QoUmV0dXJuKSkKCmdncGxvdChzaWdtdSxhZXMoeCA9IHNpZ21hLCB5ID0gbXUsIGxhYmVsPXN5bWJvbCkpICsgZ2VvbV9wb2ludChhbHBoYSA9MC42KSArIHNjYWxlX3hfbG9nMTAoKSArIHNjYWxlX3lfbG9nMTAoKSArIGdlb21fdGV4dChhZXMobGFiZWw9c3ltYm9sKSxoanVzdD0wLCB2anVzdD0wKQpgYGAKCkFtYXpvbiBkb21pbmF0ZXMgYWxsIG90aGVyIHN0b2NrcywgYmVjYXVzZSBpdHMgcmV0dXJuIGlzIHRoZSBoaWdoZXN0LCBidXQgWVVNIGlzIGNvbmNlcm5pbmcgdGhlIHJldHVybiBkb21pbmF0ZWQgYnkgQW1hem9uLCBidXQgY29uY2VybmluZyB0aGUgc2lnbWEgQW1hem9uIGlzIG11Y2ggcmlza2llciB0aGFuIFlVTS4gWVVNIGNvdWxkIGJlIHNlZW4gaW4gdGhpcyBwbG90IGFzIGVmZmljaWVudC4KCgpgYGB7ciBFZmZpY2llbnQgRnJvbnRpZXJ9CmNoYXJ0LkVGLldlaWdodHMoc2lnbXUpCmBgYAoKYGBge3J9CmRlbW8oZGVtb19lZmZpY2llbnRfZnJvbnRpZXIpCmBgYAoKCmMpCU5vdyBjb21lcyB0aGUgZnVuOiBXb3JrIHRocm91Z2ggdGhlIHZpZ25ldHRlIG9mIHRoZSBgcG9ydGZvbGlvQW5hbHl0aWNzYC1wYWNrYWdlCihgdmlnbmV0dGUoInBvcnRmb2xpb192aWduZXR0ZSIpYCksIHNldCBhIGZ1bGwgaW52ZXN0bWVudCBjb25zdHJhaW50IGFuZCBsaW1pdCB0aGUgcG9ydGZvbGlvIHdlaWdodHMgdG8gYmUgJ2xvbmcgb25seScgYW5kIGNhbGN1bGF0ZSBtaW5pbXVtLXZhcmlhbmNlL21heGltdW0tcmV0dXJuIGFuZCBxdWFkcmF0aWMgdXRpbGl0eSBwb3J0Zm9saW9zLgoKZCkJQWxsb3cgZm9yIHNob3J0IHNlbGxpbmcgKGRlbGV0ZSB0aGUgbG9uZyBvbmx5IGNvbnN0cmFpbnQpLiBXaGF0IGhhcHBlbnMgdG8geW91ciBwb3J0Zm9saW8/IElsbHVzdHJhdGUgdXNpbmcgdGhlIGVmZmljaWVudCBmcm9udGllciEgQ29tYmluZSBlZmZpY2llbnQgZnJvbnRpZXJzIHVzaW5nIGBjaGFydC5FZmZpY2llbnRGcm9udGllck92ZXJsYXlgIHRvIGhpZ2hsaWdodCB0aGUgZGlmZmVyZW5jZXMuCgplKQlQbGF5IGFyb3VuZCB3aXRoIHRoZSBjb25zdHJhaW50cyBhbmQgc2VlIHdoYXQgaGFwcGVucy4gSWxsdXN0cmF0ZSB1c2luZyBgY2hhcnQuRWZmaWNpZW50RnJvbnRpZXJPdmVybGF5YC4KCgojIyBFeGVyY2lzZSAyOiBEbyBpdCB5b3Vyc2VsZgoKSW4gdGhpcyBleGVyY2lzZSB5b3UgZmlyc3QgZG93bmxvYWQgdGhlIElCb3h4IEV1cm8gQ29ycG9yYXRlIEFsbCBNYXR1cml0aWVzICgiSUJDUlBBTCIpIGFuZCB0aGUgRXVyb1N0b3h4ICgiREpFUzUwSSIpIGluZGV4IGZyb20gRGF0YXN0cmVhbSAtIG1vbnRobHkgZGF0YSBhcyBsb25nIGFzIHBvc3NpYmxlLiBXZSB3aWxsIGNoZWNrIHRoZSBjYWxjdWxhdGlvbnMgb2YgYFJgLiBDYWxjdWxhdGUgZGlzY3JldGUgbW9udGhseSByZXR1cm5zLgoKYSkJU3RhdHMvTm9ybWFsaXR5IChzZWUgQTEpCmIpCUdldCB0aGUgbmVjZXNzYXJ5IGlucHV0IHBhcmFtZXRlcnMgKG11LCBzaWdtYSwgcGxlYXNlIHVzaW5nIHZhcmlhYmxlcywgSSBkb24ndCB3YW50IHRvIHNlZSBtYW51YWwgbnVtYmVycyBpbiB5b3VyIGNvZGUpIGFuZCBjYWxjdWxhdGUgdGhlIE1pbmltdW0tVmFyaWFuY2UtUG9ydGZvbGlvIChtYW51YWxseSBpbiBSKS4gVGhlbiBkbyBpdCB1c2luZyB0aGUgYHBvcnRmb2xpb0FuYWx5dGljc2AtcGFja2FnZS4KYykJTm93IGFzc3VtZSBhIHJpc2stZnJlZSByYXRlIG9mIDAgYW5kIGNhbGN1bGF0ZSB0aGUgVGFuZ2VuY3ktUG9ydGZvbGlvIG1hbnVhbGx5IGFuZCB3aXRoIHRoZSBgcG9ydGZvbGlvQW5hbHl0aWNzYC1wYWNrYWdlLiBXaGF0IGlzIHRoZSBzbG9wZSBvZiB0aGUgQ0FMPyBQbG90IGEgbXUtc2lnbWEtZGlhZ3JhbSBpbmNsdWRpbmcgYWxsIHJlbGV2YW50IGluZm9ybWF0aW9uLiBXaGF0IGFyZSB5b3VyIHBvcnRmb2xpbyB3ZWlnaHRzIGFuZCB3ZWlnaHRlZCByZXR1cm5zPyBBZGRpdGlvbmFsbHkgYWxsb3cgZm9yIHNob3J0c2VsbGluZyBhbmQgY2hlY2sgZm9yIGNoYW5nZXMuCmQpCU5vdywgYXNzdW1lIGEgcmlzay1hdmVyc2lvbiBvZiBBPTEsIDIgb3IgMyBhbmQgY2FsY3VsYXRlIHlvdXIgb3B0aW1hbCBjb21wbGV0ZSBwb3J0Zm9saW8gKHNlZSBsZWN0dXJlIHNsaWRlcykuCgoKIyMgRXhlcmNpc2UgMzogQ292YXJpYW5jZSBQcm9ibGVtcwoKSW4gdGhlIGZpcnN0IHBhcnQgb2YgdGhpcyBleGVyY2lzZSB3ZSB3aWxsIGJlIGNoZWNraW5nIGNvdmFyaWFuY2VzIGFuZCBwb3J0Zm9saW9zIHRoYXQgbWlnaHQgb2NjdXIgZnJvbSBmYXVsdHkgY29ycmVsYXRpb24gbWF0cmljZXMuIFdlIHVzZSB0aGUgY292YXJpYW5jZSBtYXRyaXggZnJvbSBvdXIgZXhhbXBsZQpgYGB7ciBjb3YsIGVjaG89RkFMU0UsIGZpZy5jYXA9IkZhdWx0eSBjb3ZhcmlhbmNlIG1hdHJpeCIsIG91dC53aWR0aCA9ICc2MCUnfQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiY292LnBuZyIpCmBgYAp3aGVyZSB3ZSBhZGRpdGlvbmFsbHkgYXNzdW1lIG1lYW4gcmV0dXJucyBvZiAxMCUgZm9yIGFsbCB0aHJlZSBhc3NldHMuCklmIHdlIGRlZmluZSAkXG11JCB0byBiZSB0aGUgdmVjdG9yIG9mIG1lYW4gcmV0dXJucyBhbmQgJFxzaWdtYSQgdGhlIHZlY3RvciBvZiBzdGFuZGFyZCBkZXZpYXRpb25zLCB3ZSBjYW4gY2FsY3VsYXRlIHRoZSBjb3ZhcmlhbmNlIG1hdHJpeCAkXFNpZ21hJCBhcyAkXFNpZ21hPWRpYWcoXHNpZ21hKVxjZG90IFJcY2RvdCBkaWFnKFxzaWdtYSkkLCB3aGVyZSAkUiQgaXMgdGhlIGNvcnJlbGF0aW9uIG1hdHJpeCAoYXMgaW4gdGhlIHRhYmxlIGFib3ZlKSBhbmQgJGRpYWckIHB1dHMgdGhlIHRocmVlIHN0YW5kYXJkIGRldmlhdGlvbnMgaW50byB0aGUgZGlhZ29uYWwgb2YgYSBtYXRyaXguCgpOb3cgd2UgY2FuIGNhbGN1bGF0ZSB0aGUgTWluaW11bS1WYXJpYW5jZS1Qb3J0Zm9saW8gdXNpbmcgbWF0cml4IGNhbGN1bHVzIGFzCiR3X01QPVxmcmFje1xTaWdtYV57LTF9XGNkb3QgMSd9ezFcY2RvdFxTaWdtYV57LTF9XGNkb3QgMSd9JAp3aGVyZSAxIGlzIGEgdmVjdG9yIG9mIG9uZXMgd2l0aCBkaW1lbnNpb24gZXF1YWwgdG8gdGhlIG51bWJlciBvZiBhc3NldHMuIFNpbWlsYXJseSBvbmUgY2FuIGNhbGN1bGF0ZSB0aGUgdGFuZ2VuY3kgcG9ydGZvbGlvIGFzCiR3X1RQPVxmcmFje1xTaWdtYV57LTF9XGNkb3QgKFxtdS1yX2YpJ317MVxjZG90XFNpZ21hXnstMX1cY2RvdCAoXG11LXJfZiknfSQuCgpTbyB0byBnZXQgdXNlZCB0byB0aGUgbmVjZXNzYXJ5IHRvb2xzLCB3ZSB1c2UgdGhlIHBhY2thZ2UgIm1hdHJpeGNhbGMiIHdoZXJlaW4gd2UgaGF2ZSBhIGZ1bmN0aW9uIGBpcy5wb3NpdGl2ZS5zZW1pLmRlZmluaXRlKClgIHRoYXQgY2FuIGNoZWNrIGNvdmFyaWFuY2UvY29ycmVsYXRpb24gbWF0cmljZXMgZm9yIHBvc2l0aXZlIHNlbWlkZWZpbml0ZW5lc3MuIEluIHRoZSBwYWNrYWdlIGBNYXRyaXhgIHdlIGZpbmQgYSBmdW5jdGlvbiBgbmVhclBEYCB0aGF0IGNhbiBoZWxwIHVzIHRvIGNyZWF0ZSBhIHZhbGlkIGNvcnJlbGF0aW9uIG1hdHJpeC4gVHJ5IGFuZCBjYWxjdWxhdGUgdGhlIHdlaWdodHMgb2YgdGhlIE1WUCBhbmQgdGhlIFRQLCBhbmQgdGhlbiBjYWxjdWxhdGUgcG9ydGZvbGlvIG1lYW4gYW5kIHZhcmlhbmNlIHVzaW5nICRcbXVfUD13XGNkb3QgXG11JyQgYW5kICRcc2lnbWFfUF4yPXdcY2RvdCBcU2lnbWFcY2RvdCB3JyQgZm9yIHRoZSBNVlAgYW5kIHRoZSBUUCBhcyB3ZWxsIGFzIHRoZSB3ZWlnaHQgdmVjdG9yIHc9KC0xLDEsMSkuIERvIHRoaXMgZm9yIHRoZSBmYXVsdHkgbWF0cml4IGFzIHdlbGwgYXMgdGhlIGNvcnJlY3RlZCBvbmUuIFdoYXQgZG8geW91IG9ic2VydmU/CgoK</div>
 
 
 
