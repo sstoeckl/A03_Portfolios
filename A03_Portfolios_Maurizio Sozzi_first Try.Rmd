@@ -628,9 +628,11 @@ meanvar.portf <- add.objective(portfolio=port,
                        name="StDev")
 summary(meanvar.portf, digits=2)
 prt_ef <- create.EfficientFrontier(R=returns_index_final_xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
-chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+chart.EfficientFrontier(prt_ef, match.col="StdDev", rf=NULL)
 chart.EF.Weights(prt_ef, colorset=rainbow(n = length(labels)), match.col="StdDev", cex.lab = 1, main = "StdDev")
 ```
+
+
 
 __calculate the weighted return manually__ 
 ```{r}
