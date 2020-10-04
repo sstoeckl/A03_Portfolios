@@ -78,33 +78,460 @@ ggplot(sigmu,aes(x = sigma, y = mu, label=symbol)) + geom_point(alpha =0.6) + sc
 
 Amazon dominates all other stocks, because its return is the highest, but YUM is concerning the return dominated by Amazon, but concerning the sigma Amazon is much riskier than YUM. YUM could be seen in this plot as efficient.
 
-
-```{r Efficient Frontier}
-chart.EF.Weights(sigmu)
-```
-
 ```{r}
-demo(demo_efficient_frontier)
+ port <- portfolio.spec(assets = colnames(stock.returns),
+                        category_labels = funds)
+ port <- add.constraint(portfolio=port, type="long_only")
+
+ meanvar.portf <- add.objective(portfolio=port, type="return", name="mean")
+ meanvar.portf <- add.objective(portfolio=port, type="risk", name="StdDev")
+
+ summary(meanvar.portf, digits=2)
+
+ prt_ef <- create.EfficientFrontier(R=stock.returns, portfolio=port, type="mean-StdDev", match.col = "StdDev")
+
+
+ chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 2)
+
+ chart.EF.Weights(prt_ef, colorset=rainbow(n = length(stock.selection)), match.col="StdDev", cex.lab = 1
+ , main = "StdDev")
 ```
+
 
 
 c)	Now comes the fun: Work through the vignette of the `portfolioAnalytics`-package
 (`vignette("portfolio_vignette")`), set a full investment constraint and limit the portfolio weights to be 'long only' and calculate minimum-variance/maximum-return and quadratic utility portfolios.
 
+Full investment
+```{r}
+portfull <- portfolio.spec(assets = colnames(stock.returns))
+
+portfull <- add.constraint(portfolio=portfull, type="full_investment")
+
+meanvar.portf.full <- add.objective(portfolio=portfull, type="return", name="mean")
+meanvar.portf.full <- add.objective(portfolio=portfull, type="risk", name="StdDev")
+
+prt_ef_full <- create.EfficientFrontier(R=stock.returns, portfolio=portfull, type="mean-StdDev", match.col = "StdDev")
+
+chart.EfficientFrontier(prt_ef_full, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+
+
+chart.EF.Weights(prt_ef_full, colorset=rainbow(n = length(stock.selection)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+
+#Minimum Variance
+```{r}
+ port_l <- portfolio.spec(assets = colnames(stock.returns))
+
+ port_l <- add.constraint(portfolio = port_l,
+ type = "long_only")
+
+ minvar <- add.objective(portfolio = port_l, type = "risk", name = "var")
+
+ opt_minvar <- optimize.portfolio(R=stock.returns, portfolio = minvar, optimize_method = "ROI", trace = TRUE)
+
+ print(opt_minvar)
+
+ plot(opt_minvar, risk.col="StdDev", return.col="mean",
+       main="Minimum Variance Optimization", chart.assets=TRUE,
+       xlim=c(0, 0.1), ylim=c(0,0.012))
+
+
+```
+
+#Maximize Mean Return with Return on Investment
+```{r}
+ maxret <-add.objective(portfolio=port_l, type="return", name="mean")
+ opt_maxret <- optimize.portfolio(R=stock.returns, portfolio=maxret,
+                                  optimize_method="ROI",
+                                  trace=TRUE)
+ print(opt_maxret)
+ plot(opt_maxret, risk.col="StdDev", return.col="mean",
+        main="Maximum Return Optimization", chart.assets=TRUE,
+        xlim=c(0, 0.3), ylim=c(0,0.013))
+
+```
+
+#Calculate quadratic utility portfolio
+```{r}
+qu <- add.objective(portfolio=port_l, type="return", name="mean")
+qu <- add.objective(portfolio=qu, type="risk", name="var", risk_aversion=0.25)
+opt_qu <- optimize.portfolio(R=stock.returns, portfolio=qu,
+                              optimize_method="ROI",
+                              trace=TRUE)
+print(opt_qu)
+plot(opt_qu, risk.col="StdDev", return.col="mean",
+       main="Quadratic Utility Optimization", chart.assets=TRUE,
+       xlim=c(0, 0.15), ylim=c(0, 0.015))
+
+```
+
+
 d)	Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using `chart.EfficientFrontierOverlay` to highlight the differences.
+
+# Now with short Selling
+```{r}
+ portf.list <- combine.portfolios(list(port, port_l))
+ legend.labels <- c("Full Investment", "Long Only")
+ chart.EfficientFrontierOverlay(R=stock.returns,
+                                portfolio_list=portf.list, type="mean-StdDev", 
+                                match.col="StdDev", legend.loc="topleft", 
+                                legend.labels=legend.labels, cex.legend=0.6,
+                                labels.assets=TRUE, pch.assets=1)
+```
 
 e)	Play around with the constraints and see what happens. Illustrate using `chart.EfficientFrontierOverlay`.
 
+```{r}
+ port_c <- add.constraint(portfolio=port, type="diversification", div_target=0.7)
+ port_c <- add.constraint(portfolio=port_c, type="box", min=0.05, max=0.4)
+ portf.list.c <- combine.portfolios(list(port, port_c, port_l))
+ legend.labels <- c("Full Investment", "Constraints", "Long Only")
+
+ chart.EfficientFrontierOverlay(R=stock.returns,
+                                portfolio_list=portf.list.c, type="mean-StdDev", 
+                                match.col="StdDev", legend.loc="topleft", 
+                                legend.labels=legend.labels, cex.legend=0.6,
+                                labels.assets=TRUE, pch.assets=1)
+```
 
 ## Exercise 2: Do it yourself
 
 In this exercise you first download the IBoxx Euro Corporate All Maturities ("IBCRPAL") and the EuroStoxx ("DJES50I") index from Datastream - monthly data as long as possible. We will check the calculations of `R`. Calculate discrete monthly returns.
 
+```{r}
+
+ Eurostoxx_correct <- read_xlsx("eurostoxx.xlsx")
+ Eurostoxx_correct
+ View(Eurostoxx_correct)
+
+ Iboxx_correct <- read_xlsx("iboxx.xlsx")
+ Iboxx_correct
+ View(Iboxx_correct)
+
+```
+
+
+ Calculate monthly returns for eurostoxx
+```{r}
+ monthly_returns_eurostoxx <- Eurostoxx_correct %>%
+   mutate(date=as.yearmon(date), price=as.numeric(price))%>%
+   tq_transmute(select = price,
+                mutate_fun = periodReturn,
+                period="monthly",
+                type="arithmetic",
+                col_rename = "monthly_returns"
+                )
+ monthly_returns_eurostoxx
+
+```
+
+
+Then the same for iboxx
+```{r}
+ monthly_returns_iboxx <- Iboxx_correct %>%
+   mutate(date=as.yearmon(date), price=as.numeric(price)) %>%
+   tq_transmute(select = price,
+                mutate_fun = periodReturn,
+                period="monthly",
+                type="arithmetic",
+                col_rename = "monthly_returns"
+                )
+
+ monthly_returns_iboxx
+```
+
+```{r To use the portfolio package we need the data in a xts format}
+ eurostoxx_returns_xts <- monthly_returns_eurostoxx %>%
+   select(date,monthly_returns) %>%
+   tk_xts(silent = TRUE)
+ eurostoxx_returns_xts
+```
+
+```{r}
+ iboxx_returns_xts <- monthly_returns_iboxx %>%
+   select(date,monthly_returns) %>%
+   tk_xts(silent = TRUE)
+ iboxx_returns_xts
+```
+
+```{r Merge them together}
+ index_final <- left_join(monthly_returns_iboxx, monthly_returns_eurostoxx, by = "date")
+
+ index_final
+
+ returns_index_final_xts <- index_final %>%
+   select(date, monthly_returns.x, monthly_returns.y) %>%
+   tk_xts(silent = TRUE)
+ returns_index_final_xts
+```
+
 a)	Stats/Normality (see A1)
+
+```{r}
+ monthly_returns_eurostoxx %>%
+   tq_performance(Ra = monthly_returns, Rb = NULL, performance_fun = table.Stats)
+ monthly_returns_eurostoxx
+```
+
+```{r}
+ monthly_returns_iboxx %>%
+   tq_performance(Ra = monthly_returns, Rb = NULL, performance_fun = table.Stats)
+ monthly_returns_iboxx
+```
+
+ 
+
+```{r Plot a histogram to check normality}
+ monthly_returns_eurostoxx %>%
+   ggplot(aes(x=monthly_returns)) +
+   geom_histogram(aes(y=..density..), colour="black", fill="pink") 
+```
+
+
+It is skewed to the left --> it is right steep , negatively skewed --> we see that in thhe skewness in table.Stats as well
+
+However, it is almost normally distributed
+
+```{r}
+ monthly_returns_iboxx %>%
+   ggplot(aes(x=monthly_returns)) +
+   geom_histogram(aes(y=..density..), colour="black", fill="lightblue") 
+```
+Same as above is more normally distributed, it kind of has just one outliner on the left
+
+```{r}
+ qqnorm(monthly_returns_iboxx$monthly_returns)
+```
+We can see here as well that it is almost normally distributed --> almost a linear regression
+
+```{r}
+ qqnorm(monthly_returns_eurostoxx$monthly_returns)
+```
+Almost a straight line
+
 b)	Get the necessary input parameters (mu, sigma, please using variables, I don't want to see manual numbers in your code) and calculate the Minimum-Variance-Portfolio (manually in R). Then do it using the `portfolioAnalytics`-package.
+
+```{r}
+returns_index_final_xts
+
+colnames(returns_index_final_xts) <- c("ibox", "eurostoxx")
+returns_index_final_xts
+```
+
+
+```{r}
+ mu_returns_index_final_xts <- lapply(returns_index_final_xts, FUN=mean)
+ mu_returns_index_final_xts
+```
+Calculate "sigma" for each index
+
+```{r}
+ sigma_returns_index_final_xts <- lapply(returns_index_final_xts,FUN=sd)
+ sigma_returns_index_final_xts
+
+```
+
+Calculate with the package
+
+ calculate the minimum-variance-portfolio
+
+ -vignette("portfolio_vignette")
+ -do not allow for short selling
+
+
+```{r}
+ labels <- c("iboxx", "eurostoxx")
+
+ port_l <- portfolio.spec(assets = colnames(returns_index_final_xts), category_labels = labels)
+
+ port_l <- add.constraint(portfolio=port_l,type="long_only")
+
+ minvar <- add.objective(portfolio=port_l, type="risk", name="var")
+
+ opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvar, optimize_method="ROI", trace=TRUE)
+ print(opt_minvar)
+```
+
+We would invest all in iboxx
+
+```{r}
+ # allow for shortselling (NOT WORKING)
+ portf_minvar <- portfolio.spec(assets=returns_index_final_xts)
+ # Add full investment constraint to the portfolio object
+ portf_minvar <- add.constraint(portfolio=portf_minvar, type="full_investment")
+
+ minvarsh <- add.objective(portfolio=portf_minvar, type="risk", name="var")
+
+ opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvarsh, optimize_method="ROI", trace=TRUE)
+ print(opt_minvar)
+
+```
+
+#Allow for short selling (delete the long_only condition)
+
+```{r}
+ mu <- colMeans(returns_index_final_xts)
+ Sigma <- cov(returns_index_final_xts) 
+ ones <- rep(1,ncol(returns_index_final_xts))
+
+ wMVP <- t(solve(Sigma) %*% ones)/drop(ones %*% solve(Sigma) %*% ones)
+ muMVP <- drop(wMVP%*%mu) 
+ sigmaMVP <- drop(wMVP %*% Sigma %*% t(wMVP))^0.5
+ srMVP <- muMVP/sigmaMVP
+ round(cbind(wMVP,"mean"=muMVP,"sd"=sigmaMVP,"sr"=srMVP),4)
+```
+
+Did it manually
+
+#Calculate "mu" for each index separately to use them for calculation
+```{r}
+
+ returns_eurostoxx <- monthly_returns_eurostoxx%>%
+   select(monthly_returns)
+
+ returns_iboxx <- monthly_returns_iboxx%>%
+   select(monthly_returns)
+
+ mu_iboxx <- lapply(returns_iboxx, FUN=mean)
+ mu_iboxx
+ mu_iboxx_numeric <- as.numeric(mu_iboxx)
+
+ mu_eurostoxx <- lapply(returns_eurostoxx, FUN=mean)
+ mu_eurostoxx
+ mu_eurostoxx_numeric <- as.numeric(mu_eurostoxx)
+
+```
+ 
+#Calculate "sigma" for each index separately
+```{r}
+ sigma_iboxx <- as.numeric(lapply(returns_iboxx, FUN=sd))
+ sigma_iboxx
+ sigma_eurostoxx <- as.numeric(lapply(returns_eurostoxx, FUN=sd))
+ sigma_eurostoxx
+
+```
+
+```{r}
+ cor <- cor(returns_index_final_xts, y=NULL)
+ cor_xy <- cor [1,2]
+ cor_xy
+```
+
+```{r}
+ abc <- sigma_iboxx^2-(sigma_eurostoxx*sigma_iboxx*cor_xy)
+
+ covarianz_xy <- sigma_eurostoxx*sigma_iboxx*cor_xy
+
+ xyz <- sigma_eurostoxx^2+sigma_iboxx^2-(2*sigma_eurostoxx*sigma_iboxx*cor_xy)
+
+ MVP <- abc/xyz
+ MVP
+```
+
+We do not invest in eurostoxx
+We invest everything in iboxx and sell eurostoxx to buy more iboxx for the minumum varianze portfolio
+
 c)	Now assume a risk-free rate of 0 and calculate the Tangency-Portfolio manually and with the `portfolioAnalytics`-package. What is the slope of the CAL? Plot a mu-sigma-diagram including all relevant information. What are your portfolio weights and weighted returns? Additionally allow for shortselling and check for changes.
+
+__Tangency portfolio with package__
+```{r }
+ wTP <- t(solve(Sigma) %*% (mu*ones))/drop(ones %*% solve(Sigma) %*% (mu*ones))
+ muTP <- drop(wTP%*%mu); sigmaTP <- drop(wTP %*% Sigma %*% t(wTP))^0.5
+ srTP <- (muTP)/sigmaTP; srTP2 <- sqrt(drop((mu*ones) %*% solve(Sigma) %*% (mu*ones)))
+ round(cbind(wTP,"mean"=muTP,"sd"=sigmaTP,"sr"=srTP),4)
+```
+
+__Tangency portfolio manually__
+Maximize the Sharp Ratio
+```{r}
+ weight_eurostoxx1 <- (mu_eurostoxx_numeric*sigma_iboxx^2)-(mu_iboxx_numeric*covarianz_xy)
+ weight_eurostoxx2 <- (mu_eurostoxx_numeric*sigma_iboxx^2)+(mu_iboxx_numeric*sigma_eurostoxx^2)-((mu_eurostoxx_numeric+mu_iboxx_numeric)*covarianz_xy)
+ weight_eurostoxx <- weight_eurostoxx1/weight_eurostoxx2
+ weight_eurostoxx
+```
+
+__Calculating sharpratio manually__
+Mu tangency portfolio_ we calculate manually the sharp ratio}
+```{r}
+
+ mean_tangencyportfolio <- (weight_eurostoxx)*mu_eurostoxx_numeric+((1-(weight_eurostoxx))*mu_iboxx_numeric)
+
+ varianz_tangencyportfolio <- sqrt(((weight_eurostoxx)^2*(sigma_eurostoxx)^2)+(((1-(weight_eurostoxx))^2)*(sigma_iboxx)^2)+(2*weight_eurostoxx*(1-(weight_eurostoxx))*covarianz_xy))
+
+ sr_tangencyportfolio <- mean_tangencyportfolio/varianz_tangencyportfolio
+ sr_tangencyportfolio
+```
+
+__Calculate slope__
+
+slope of the CAL would be the Sharpratio = -0.0268
+
+mu sigma diagram
+```{r}
+
+ allsigmamu <- bind_rows(merge(sigma_eurostoxx, mu_eurostoxx_numeric), merge( sigma_iboxx,mu_iboxx_numeric))
+
+ name <- c("EuroStoxx", "Iboxx")
+
+ allsigmamuwithname <- allsigmamu %>% add_column(name)
+ allsigmamuwithname
+```
+
+```{r}
+ #rename the columns
+ colnames(allsigmamuwithname) <- c("sigma", "mu", "name")
+ allsigmamuwithname
+```
+
+```{r}
+ ggplot(allsigmamuwithname, aes(sigma, mu)) +
+   geom_point() +
+   theme_classic() + geom_label_repel(aes(label=name),
+                             box.padding = 0.4,
+                             point.padding = 0.3,
+                             size=6)
+
+```
+
+Plot the efficient frontier
+```{r}
+ port <- portfolio.spec(assets = colnames(returns_index_final_xts),
+                         category_labels = labels)
+ port <- add.constraint(portfolio=port,
+                         type="full_investment")
+ meanvar.portf <- add.objective(portfolio=port, 
+                        type="return",
+                        name="mean")
+ meanvar.portf <- add.objective(portfolio=port, 
+                        type="risk",
+                        name="StDev")
+ summary(meanvar.portf, digits=2)
+ prt_ef <- create.EfficientFrontier(R=returns_index_final_xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
+ chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+ chart.EF.Weights(prt_ef, colorset=rainbow(n = length(labels)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+
+__Calculate the weighted return manually__ 
+```{r}
+ 2.8329*mu_eurostoxx_numeric + -1.8329*mu_iboxx_numeric
+
+ #our weighted return would be about 0.004
+```
+
 d)	Now, assume a risk-aversion of A=1, 2 or 3 and calculate your optimal complete portfolio (see lecture slides).
 
+```{r}
+mean_tangencyportfolio/(1*varianz_tangencyportfolio)
+```
+
+```{r}
+mean_tangencyportfolio/(2*varianz_tangencyportfolio)
+```
+
+```{r}
+mean_tangencyportfolio/(3*varianz_tangencyportfolio)
+```
 
 ## Exercise 3: Covariance Problems
 
