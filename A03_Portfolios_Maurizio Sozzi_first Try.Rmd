@@ -10,7 +10,7 @@ rm(list = ls())
 ```
 
 ```{r load_packs}
-pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk,dplyr,devtools,ggrepel,readxl)
+pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk,dplyr,devtools,ggrepel,readxl,roi)
 ```
 %>% to pipe
 
@@ -163,9 +163,10 @@ summary(meanvar.portf, digits=2)
 prt_ef <- create.EfficientFrontier(R=stock.returns.timeseries.xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
 
 
-chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 2)
 
-chart.EF.Weights(prt_ef, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+chart.EF.Weights(prt_ef, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1
+, main = "StdDev")
 
 ```
 
@@ -296,8 +297,8 @@ View(Iboxx_correct)
 
 ```
 
-Calculate discrete monthly returns for eurostoxx
 
+Calculate monthly returns for eurostoxx
 ```{r}
 monthly_returns_eurostoxx <- Eurostoxx_correct %>%
   mutate(date=as.yearmon(date), price=as.numeric(price))%>%
@@ -312,8 +313,8 @@ monthly_returns_eurostoxx
 
 ```
 
-then the same for iboxx
 
+then the same for iboxx
 ```{r}
 monthly_returns_iboxx <- Iboxx_correct %>%
   mutate(date=as.yearmon(date), price=as.numeric(price)) %>%
@@ -380,7 +381,7 @@ plot a histogram to check normality
 ```{r}
 monthly_returns_eurostoxx %>%
   ggplot(aes(x=monthly_returns)) +
-  geom_histogram(aes(y=..density..), colour="darkblue", fill="white") 
+  geom_histogram(aes(y=..density..), colour="black", fill="pink") 
 ```
 
 
@@ -391,7 +392,7 @@ but it is almost normally distributed
 ```{r}
 monthly_returns_iboxx %>%
   ggplot(aes(x=monthly_returns)) +
-  geom_histogram(aes(y=..density..), colour="darkblue", fill="white") 
+  geom_histogram(aes(y=..density..), colour="black", fill="lightblue") 
 ```
 same as above
 
@@ -415,8 +416,16 @@ b)	Get the necessary input parameters (mu, sigma, please using variables, I don'
 
 Calculate "mu" for each index
 
-monthly_returns.x = iboxx
-monthly_returns.y = eurostoxx
+
+```{r}
+returns_index_final_xts
+
+
+
+colnames(returns_index_final_xts) <- c("ibox", "eurostoxx")
+returns_index_final_xts
+```
+
 
 ```{r}
 mu_returns_index_final_xts <- lapply(returns_index_final_xts, FUN=mean)
@@ -461,9 +470,9 @@ portf_minvar <- portfolio.spec(assets=returns_index_final_xts)
 # Add full investment constraint to the portfolio object
 portf_minvar <- add.constraint(portfolio=portf_minvar, type="full_investment")
 
-minvar <- add.objective(portfolio=portf_minvar, type="risk", name="var")
+minvarsh <- add.objective(portfolio=portf_minvar, type="risk", name="var")
 
-opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvar, optimize_method="ROI", trace=TRUE)
+opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvarsh, optimize_method="ROI", trace=TRUE)
 print(opt_minvar)
 
 ```
@@ -471,9 +480,8 @@ print(opt_minvar)
 #allow for short selling (delete the long_only condition)
 
 ```{r}
-#allow for short selling (delete the long_only condition)
-
-mu <- colMeans(returns_index_final_xts); Sigma <- cov(returns_index_final_xts); 
+mu <- colMeans(returns_index_final_xts)
+Sigma <- cov(returns_index_final_xts) 
 ones <- rep(1,ncol(returns_index_final_xts))
 
 wMVP <- t(solve(Sigma) %*% ones)/drop(ones %*% solve(Sigma) %*% ones)
@@ -482,6 +490,7 @@ sigmaMVP <- drop(wMVP %*% Sigma %*% t(wMVP))^0.5
 srMVP <- muMVP/sigmaMVP
 round(cbind(wMVP,"mean"=muMVP,"sd"=sigmaMVP,"sr"=srMVP),4)
 ```
+
 do it manually
 
 Calculate "mu" for each index separately to use them for calculation
@@ -539,57 +548,7 @@ c)	Now assume a risk-free rate of 0 and calculate the Tangency-Portfolio manuall
 
 ?portfolioAnalytics
 
-```{r}
-# construct the data
-asset.names = c("MSFT", "NORD", "SBUX")
-er = c(0.0427, 0.0015, 0.0285)
-names(er) = asset.names
-covmat = matrix(c(0.0100, 0.0018, 0.0011,
-                  0.0018, 0.0109, 0.0026,
-                  0.0011, 0.0026, 0.0199),
-                nrow=3, ncol=3)
-r.free = 0.005
-dimnames(covmat) = list(asset.names, asset.names)
 
-# compute tangency portfolio
-tan.port <- tangency.portfolio(er, covmat, r.free)
-tan.port
-summary(tan.port, risk.free=r.free)
-plot(tan.port, col="blue")
-
-# compute tangency portfolio with no short sales
-tan.port.ns <- tangency.portfolio(er, covmat, r.free, shorts=FALSE)
-tan.port.ns
-summary(tan.port.ns, risk.free=r.free)
-plot(tan.port.ns, col="blue")
-```
-?tangency.portfolio()
-
-```{r}
-# construct the data
-asset.names = c("Eurostxx_correct", "Iboxx_correct")
-
-er = c("mu_eurostoxx", "mu_iboxx")
-names(er) = asset.names
-covmat = matrix(c(0.0100, 0.0018, 0.0011,
-                  0.0018, 0.0109, 0.0026,
-                  0.0011, 0.0026, 0.0199),
-                nrow=3, ncol=3)
-r.free = 0.005
-dimnames(covmat) = list(asset.names, asset.names)
-
-# compute tangency portfolio
-tan.port <- tangency.portfolio(er, covmat, r.free)
-tan.port
-summary(tan.port, risk.free=r.free)
-plot(tan.port, col="blue")
-
-# compute tangency portfolio with no short sales
-tan.port.ns <- tangency.portfolio(er, covmat, r.free, shorts=FALSE)
-tan.port.ns
-summary(tan.port.ns, risk.free=r.free)
-plot(tan.port.ns, col="blue")
-```
 
 
 __tangency portfolio with package__
@@ -622,7 +581,7 @@ sr_tangencyportfolio
 ```
 __calculate slope__
 
-slope of the CAL would be the Sharpratio = -0.0334
+slope of the CAL would be the Sharpratio = -0.0268
 
 mu sigma diagram
 ```{r}
@@ -671,7 +630,6 @@ chart.EF.Weights(prt_ef, colorset=rainbow(n = length(labels)), match.col="StdDev
 __calculate the weighted return manually__ 
 ```{r}
 2.8329*mu_eurostoxx_numeric + -1.8329*mu_iboxx_numeric
-
 
 #our weighted return would be about 0.004
 ```
