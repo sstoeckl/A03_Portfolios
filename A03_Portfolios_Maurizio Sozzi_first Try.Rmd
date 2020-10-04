@@ -423,7 +423,7 @@ returns_index_final_xts
 
 
 
-colnames(returns_index_final_xts) <- c("ibox", "eurostoxx")
+colnames(returns_index_final_xts) <- c("iboxx", "eurostoxx")
 returns_index_final_xts
 ```
 
@@ -465,9 +465,11 @@ print(opt_minvar)
 ```
 we would invest all in iboxx
 
+With short selling
+
 ```{r}
-# allow for shortselling (NOT WORKING)
-portf_minvar <- portfolio.spec(assets=returns_index_final_xts)
+# allow for shortselling
+portf_minvar <- portfolio.spec(assets = colnames(returns_index_final_xts), category_labels = labels)
 # Add full investment constraint to the portfolio object
 portf_minvar <- add.constraint(portfolio=portf_minvar, type="full_investment")
 
@@ -478,19 +480,6 @@ print(opt_minvar)
 
 ```
 
-#allow for short selling (delete the long_only condition)
-
-```{r}
-mu <- colMeans(returns_index_final_xts)
-Sigma <- cov(returns_index_final_xts) 
-ones <- rep(1,ncol(returns_index_final_xts))
-
-wMVP <- t(solve(Sigma) %*% ones)/drop(ones %*% solve(Sigma) %*% ones)
-muMVP <- drop(wMVP%*%mu) 
-sigmaMVP <- drop(wMVP %*% Sigma %*% t(wMVP))^0.5
-srMVP <- muMVP/sigmaMVP
-round(cbind(wMVP,"mean"=muMVP,"sd"=sigmaMVP,"sr"=srMVP),4)
-```
 
 do it manually
 
@@ -521,7 +510,7 @@ sigma_eurostoxx
 
 ```
 ```{r}
-cor <- cor(returns_index_final_xts, y=NULL)
+cor <- cor(returns_index_final_xts)
 cor_xy <- cor [1,2]
 cor_xy
 ```
@@ -559,30 +548,43 @@ muTP <- drop(wTP%*%mu); sigmaTP <- drop(wTP %*% Sigma %*% t(wTP))^0.5
 srTP <- (muTP)/sigmaTP; srTP2 <- sqrt(drop((mu*ones) %*% solve(Sigma) %*% (mu*ones)))
 round(cbind(wTP,"mean"=muTP,"sd"=sigmaTP,"sr"=srTP),4)
 ```
-__tangency portfolio manually__
+A negative Sharpe ratio means that the performance of a manager or portfolio is below the risk-free rate. 
 
-maximize the sharp ratio
+__tangency portfolio manually__ maximize the sharp ratio
+
+
+weight of an aptimal risky portfolio
 ```{r}
 weight_eurostoxx1 <- (mu_eurostoxx_numeric*sigma_iboxx^2)-(mu_iboxx_numeric*covarianz_xy)
 weight_eurostoxx2 <- (mu_eurostoxx_numeric*sigma_iboxx^2)+(mu_iboxx_numeric*sigma_eurostoxx^2)-((mu_eurostoxx_numeric+mu_iboxx_numeric)*covarianz_xy)
 weight_eurostoxx <- weight_eurostoxx1/weight_eurostoxx2
 weight_eurostoxx
 ```
+
+```{r}
+weight_iboxx1 <- (mu_iboxx_numeric*sigma_eurostoxx^2)-(mu_eurostoxx_numeric*covarianz_xy)
+weight_iboxx2 <- (mu_iboxx_numeric*sigma_eurostoxx^2)+(mu_eurostoxx_numeric*sigma_iboxx^2)-((mu_iboxx_numeric+mu_eurostoxx_numeric)*covarianz_xy)
+weight_iboxx <- weight_iboxx1/weight_iboxx2
+weight_iboxx
+```
+
 __calculating sharpratio manually__
 
-mu tangency portfolio_ we calculate manually the sharp ratio}
+mu tangency portfolio_ we calculate manually the sharp ratio
 ```{r}
 
 mean_tangencyportfolio <- (weight_eurostoxx)*mu_eurostoxx_numeric+((1-(weight_eurostoxx))*mu_iboxx_numeric)
 
-varianz_tangencyportfolio <- sqrt(((weight_eurostoxx)^2*(sigma_eurostoxx)^2)+(((1-(weight_eurostoxx))^2)*(sigma_iboxx)^2)+(2*weight_eurostoxx*(1-(weight_eurostoxx))*covarianz_xy))
+sd_tangencyportfolio <- sqrt(((weight_eurostoxx)^2*(sigma_eurostoxx)^2)+(((1-(weight_eurostoxx))^2)*(sigma_iboxx)^2)+(2*weight_eurostoxx*(1-(weight_eurostoxx))*covarianz_xy))
 
-sr_tangencyportfolio <- mean_tangencyportfolio/varianz_tangencyportfolio
+sr_tangencyportfolio <- (mean_tangencyportfolio-0)/sd_tangencyportfolio
 sr_tangencyportfolio
 ```
 __calculate slope__
 
 slope of the CAL would be the Sharpratio = -0.0268
+
+
 
 mu sigma diagram
 ```{r}
