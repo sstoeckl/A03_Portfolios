@@ -1,0 +1,869 @@
+
+---
+  title: "3 Aufgabe"
+author: "DG"
+date: "05 October 2020"
+output:
+  html_document: default
+---
+  
+  ```{r,eval=TRUE}
+```
+
+## Exercise 1: Optimzing portfolios
+
+Take your personal dataset of 10 stocks, set the time-frame to January 2000/ August 2018 (use a year-month format - either `as.yearmon` from `zoo` or `yearmonth` from `tsibble`) and calculate monthly simple returns (if you have not done so yet)! Use `pivot_wider()` and `tk_xts()` to make a `xts` (timeseries) from it (having ten columns with simple returns calculated from adjusted prices).
+
+Getting 10 stocks: Apple (AAPL), Microsoft (MSFT), JPMorgan (JPM), Amazon (AMZN), 3M (MMM), Pfeizer (PFE), Bank of America (BAC), Intel (INTC), Exon Mobile (XOM) and IBM (IBM).
+
+Get the stock prices of the stocks from 2000-01-01 to 2018-08-31
+
+
+Create a vector with the stocks I want to observe
+```{r}
+stockselection <- c("AAPL", "MSFT", "JPM", "AMZN", "MMM", "PFE", "BAC", "INTC", "XOM", "IBM")
+stockselection
+```
+Get the stock prices
+```{r}
+stocks.prices <- stockselection %>%
+  tq_get(get  = "stock.prices", from = "2000-01-01",to = "2018-08-31") %>%
+  dplyr::group_by(symbol) #get all stock prices and sort them by symbol
+stocks.prices
+```
+
+create monthly return for the 10 stocks. Make 10 columns for each stock one column with covmatrix.
+
+```{r}
+stocks.returns.monthly <- stocks.prices %>% 
+  mutate(date=as.yearmon(date))%>%
+  tq_transmute(select = adjusted,
+               mutate_fun = periodReturn,
+               period="monthly",
+               type="arithmetic",
+               col_rename = "Stock.returns")
+stocks.returns.monthly
+```
+
+
+```{r}
+stock.returns.timeseries.xts <- pivot_wider(data = stocks.returns.monthly, names_from = symbol, values_from = Stock.returns)%>%
+  tk_xts(date_var = date, silent = TRUE)
+stock.returns.timeseries.xts
+```
+
+
+a)  As off now, we always perform the following steps before doing anything portfolio related: Check the summary/basic statistics and moments of the assets. Plot and check for (multivariate) normality (OPTIONAL). Check the correlations and do a scatterplot. Check the covariance/correlation structure.
+
+?lapply
+
+```{r}
+stock.returns.timeseries.mu.xts <- lapply(stock.returns.timeseries.xts,FUN=mean)
+stock.returns.timeseries.mu.xts
+```
+Calculate sigma (standard deviation) for each stock
+```{r}
+stock.returns.timeseries.sigma.xts <- lapply(stock.returns.timeseries.xts,FUN=sd)
+stock.returns.timeseries.sigma.xts
+```
+Calculate correlation matrix
+```{r}
+cormatrix <- cor(stock.returns.timeseries.xts)
+cormatrix
+````
+
+Plot the correlations
+```{r}
+chart.Correlation(R=stock.returns.timeseries.xts,method = "pearson"
+)
+````
+
+Calculate the covariance matrix
+```{r}
+covmatrix <- cov(stock.returns.timeseries.xts, use = "everything", method = "pearson")
+covmatrix
+```
+
+b)  Plot the average return of the assets against their standard deviation. Are there any dominated assets? Plot the efficient frontier using `chart.EfficientFrontier` and `chart.EF.Weights` (also check the `demo(demo_efficient_frontier)` from the `portfolioAnalytics`-package.
+                                                                                                                                                                                                
+                ##Calculate mu and sigma and visualize them in a plot
+                
+                
+                ```{r}
+                meanstocks <- stocks.returns.monthly %>%
+                  dplyr::group_by(symbol) %>%
+                  dplyr::summarize(mu = mean(Stock.returns, na.rm=TRUE))
+                stocks.returns.monthly
+                meanstocks
+                ````
+                
+                ```{r}
+                sdstocks <- stocks.returns.monthly %>%
+                  dplyr::group_by(symbol) %>%
+                  dplyr::summarize(sigma = sd(Stock.returns, na.rm=TRUE))
+                sdstocks
+                
+                sigmamu <- left_join(sdstocks, meanstocks, by = "symbol")
+                
+                sigmamu
+                
+                sigmamuggplot <- ggplot(sigmamu, aes(sigma, mu))+
+                  geom_point()+
+                  geom_label_repel(aes(label = symbol),
+                                   box.padding   = 0.2,
+                                   point.padding = 0.1,
+                                   label.size = 0.2,
+                                   segment.color = 'grey50', size = 2.5)+
+                  theme_classic()
+                sigmamuggplot 
+                ```
+                
+                there is no asset which dominates all the other assets
+                
+                
+                
+                
+                                                                                                                                                                                                
+                                                                                                                                                                                                c)	Now comes the fun: Work through the vignette of the `portfolioAnalytics`-package
+(`vignette("portfolio_vignette")`), set a full investment constraint and limit the portfolio weights to be 'long only' and calculate minimum-variance/maximum-return and quadratic utility portfolios.
+
+
+long only
+```{r}
+port <- portfolio.spec(assets = colnames(stock.returns.timeseries.xts),
+                       category_labels = stockselection)
+port <- add.constraint(portfolio=port, type="long_only")
+meanvar.portf <- add.objective(portfolio=port, type="return", name="mean")
+meanvar.portf <- add.objective(portfolio=port, type="risk", name="StdDev")
+summary(meanvar.portf, digits=2)
+prt_ef <- create.EfficientFrontier(R=stock.returns.timeseries.xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
+chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 2)
+chart.EF.Weights(prt_ef, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1
+                 , main = "StdDev")
+```
+
+
+full investment
+```{r}
+portfull <- portfolio.spec(assets = colnames(stock.returns.timeseries.xts))
+portfull <- add.constraint(portfolio=portfull, type="full_investment")
+meanvar.portf.full <- add.objective(portfolio=portfull, type="return", name="mean")
+meanvar.portf.full <- add.objective(portfolio=portfull, type="risk", name="StdDev")
+prt_ef_full <- create.EfficientFrontier(R=stock.returns.timeseries.xts, portfolio=portfull, type="mean-StdDev", match.col = "StdDev")
+chart.EfficientFrontier(prt_ef_full, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+chart.EF.Weights(prt_ef_full, colorset=rainbow(n = length(stockselection)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+
+Minimum varriance
+```{r}
+port_l <- portfolio.spec(assets = colnames(stock.returns.timeseries.xts))
+port_l <- add.constraint(portfolio = port_l,
+                         type = "long_only")
+minvar <- add.objective(portfolio = port_l, type = "risk", name = "var")
+opt_minvar <- optimize.portfolio(R=stock.returns.timeseries.xts, portfolio = minvar, optimize_method = "ROI", trace = TRUE)
+print(opt_minvar)
+plot(opt_minvar, risk.col="StdDev", return.col="mean",
+     main="Minimum Variance Optimization", chart.assets=TRUE,
+     xlim=c(0, 0.1), ylim=c(0,0.012))
+```
+
+Maximize mean return with ROI
+```{r}
+maxret <-add.objective(portfolio=port_l, type="return", name="mean")
+opt_maxret <- optimize.portfolio(R=stock.returns.timeseries.xts, portfolio=maxret,
+                                 optimize_method="ROI",
+                                 trace=TRUE)
+print(opt_maxret)
+plot(opt_maxret, risk.col="StdDev", return.col="mean",
+     main="Maximum Return Optimization", chart.assets=TRUE,
+     xlim=c(0, 0.3), ylim=c(0,0.013))
+```
+
+Calculate quadratic utility portfolio
+```{r}
+qu <- add.objective(portfolio=port_l, type="return", name="mean")
+qu <- add.objective(portfolio=qu, type="risk", name="var", risk_aversion=0.25)
+opt_qu <- optimize.portfolio(R=stock.returns.timeseries.xts, portfolio=qu,
+                             optimize_method="ROI",
+                             trace=TRUE)
+print(opt_qu)
+plot(opt_qu, risk.col="StdDev", return.col="mean",
+     main="Quadratic Utility Optimization", chart.assets=TRUE,
+     xlim=c(0, 0.15), ylim=c(0, 0.015))
+```
+
+
+c)	Allow for short selling (delete the long only constraint). What happens to your portfolio? Illustrate using the efficient frontier! Combine efficient frontiers using `chart.EfficientFrontierOverlay` to highlight the differences.
+
+short selling
+```{r}
+portf.list <- combine.portfolios(list(port, port_l))
+legend.labels <- c("Full Investment", "Long Only")
+chart.EfficientFrontierOverlay(R=stock.returns.timeseries.xts,
+                               portfolio_list=portf.list, type="mean-StdDev", 
+                               match.col="StdDev", legend.loc="topleft", 
+                               legend.labels=legend.labels, cex.legend=0.6,
+                               labels.assets=FALSE, pch.assets=1)
+```
+
+
+
+
+d)	Play around with the constraints and see what happens. Illustrate using `chart.EfficientFrontierOverlay`.
+
+```{r}
+port_c <- add.constraint(portfolio=port, type="diversification", div_target=0.7)
+port_c <- add.constraint(portfolio=port_c, type="box", min=0.05, max=0.4)
+portf.list.c <- combine.portfolios(list(port, port_c, port_l))
+legend.labels <- c("Full Investment", "Constraints", "Long Only")
+chart.EfficientFrontierOverlay(R=stock.returns.timeseries.xts,
+                               portfolio_list=portf.list.c, type="mean-StdDev", 
+                               match.col="StdDev", legend.loc="topleft", 
+                               legend.labels=legend.labels, cex.legend=0.6,
+                               labels.assets=FALSE, pch.assets=1)
+```
+
+
+## Exercise 2: Do it yourself
+
+In this exercise you first download the IBoxx Euro Corporate All Maturities ("IBCRPAL") and the EuroStoxx ("DJES50I") index from Datastream - monthly data as long as possible. We will check the calculations of `R`. Calculate discrete monthly returns.
+
+
+
+```{r load_packs}
+pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk,dplyr,devtools,ggrepel)
+pacman::p_load(tidyverse,tidyquant,FFdownload,PortfolioAnalytics,tsibble,matrixcalc,Matrix,timetk,dplyr,devtools,ggrepel,readxl)
+```
+%>% to pipe
+
+@@ -216,7 +216,7 @@ opt_maxret <- optimize.portfolio(R=stock.returns.timeseries.xts, portfolio=maxre
+print(opt_maxret)
+plot(opt_maxret, risk.col="StdDev", return.col="mean",
+       main="Maximum Return Optimization", chart.assets=TRUE,
+       xlim=c(0, 0.15), ylim=c(0,0.013))
+       xlim=c(0, 0.3), ylim=c(0,0.013))
+```
+
+@@ -275,14 +275,422 @@ chart.EfficientFrontierOverlay(R=stock.returns.timeseries.xts,
+
+In this exercise you first download the IBoxx Euro Corporate All Maturities ("IBCRPAL") and the EuroStoxx ("DJES50I") index from Datastream - monthly data as long as possible. We will check the calculations of `R`. Calculate discrete monthly returns.
+
+
+
+downloaded it from datastream --> citrix (Thomson Reuters)
+
+uploaded it on the right side --> as a excel (xlsx)
+
+import dataset on the right side above --> the two of them
+
+
+```{r}
+Eurostoxx_correct <- read_xlsx("eurostoxx.xlsx")
+Eurostoxx_correct
+View(Eurostoxx_correct)
+Iboxx_correct <- read_xlsx("iboxx.xlsx")
+Iboxx_correct
+View(Iboxx_correct)
+```
+
+Calculate discrete monthly returns for eurostoxx
+
+```{r}
+monthly_returns_eurostoxx <- Eurostoxx_correct %>%
+  mutate(date=as.yearmon(date), price=as.numeric(price))%>%
+  tq_transmute(select = price,
+               mutate_fun = periodReturn,
+               period="monthly",
+               type="arithmetic",
+               col_rename = "monthly_returns"
+               )
+monthly_returns_eurostoxx
+```
+
+then the same for iboxx
+
+```{r}
+monthly_returns_iboxx <- Iboxx_correct %>%
+  mutate(date=as.yearmon(date), price=as.numeric(price)) %>%
+  tq_transmute(select = price,
+               mutate_fun = periodReturn,
+               period="monthly",
+               type="arithmetic",
+               col_rename = "monthly_returns"
+               )
+monthly_returns_iboxx
+```
+
+to use portfolioanalytics package we need our data in xts format
+
+```{r}
+eurostoxx_returns_xts <- monthly_returns_eurostoxx %>%
+  select(date,monthly_returns) %>%
+  tk_xts(silent = TRUE)
+eurostoxx_returns_xts
+```
+
+```{r}
+iboxx_returns_xts <- monthly_returns_iboxx %>%
+  select(date,monthly_returns) %>%
+  tk_xts(silent = TRUE)
+iboxx_returns_xts
+```
+
+merge them together
+
+```{r}
+index_final <- left_join(monthly_returns_iboxx, monthly_returns_eurostoxx, by = "date")
+index_final
+returns_index_final_xts <- index_final %>%
+  select(date, monthly_returns.x, monthly_returns.y) %>%
+  tk_xts(silent = TRUE)
+returns_index_final_xts
+```
+
+a)	Stats/Normality (see A1)
+Check the summary/basic statistics and moments of the assets. Plot and check for (multivariate) normality (OPTIONAL).
+
+```{r}
+monthly_returns_eurostoxx %>%
+  tq_performance(Ra = monthly_returns, Rb = NULL, performance_fun = table.Stats)
+monthly_returns_eurostoxx
+```
+
+```{r}
+monthly_returns_iboxx %>%
+  tq_performance(Ra = monthly_returns, Rb = NULL, performance_fun = table.Stats)
+monthly_returns_iboxx
+```
+
+plot a histogram to check normality
+
+```{r}
+monthly_returns_eurostoxx %>%
+  ggplot(aes(x=monthly_returns)) +
+  geom_histogram(aes(y=..density..), colour="darkblue", fill="white") 
+```
+
+
+it is skewed to the left --> it is right steep , negatively skewed --> we see that in thhe skewness in table.Stats as well
+
+but it is almost normally distributed
+
+```{r}
+monthly_returns_iboxx %>%
+  ggplot(aes(x=monthly_returns)) +
+  geom_histogram(aes(y=..density..), colour="darkblue", fill="white") 
+```
+same as above
+
+is more normally distributed
+
+it kind of has just one outliner on the left
+
+```{r}
+qqnorm(monthly_returns_iboxx$monthly_returns)
+```
+we can see here as well that it is almost normally distributed --> almost a linear regression
+
+```{r}
+qqnorm(monthly_returns_eurostoxx$monthly_returns)
+```
+
+almost a straight line
+
+
+b)	Get the necessary input parameters (mu, sigma, please using variables, I don't want to see manual numbers in your code) and calculate the Minimum-Variance-Portfolio (manually in R). Then do it using the `portfolioAnalytics`-package.
+
+Calculate "mu" for each index
+
+monthly_returns.x = iboxx
+monthly_returns.y = eurostoxx
+
+```{r}
+mu_returns_index_final_xts <- lapply(returns_index_final_xts, FUN=mean)
+mu_returns_index_final_xts
+```
+Calculate "sigma" for each index
+
+```{r}
+sigma_returns_index_final_xts <- lapply(returns_index_final_xts,FUN=sd)
+sigma_returns_index_final_xts
+```
+calculate with the package
+
+calculate the minimum-variance-portfolio
+
+-vignette("portfolio_vignette")
+-do not allow for short selling
+
+
+```{r}
+labels <- c("iboxx", "eurostoxx")
+returns_index_final
+port_l <- portfolio.spec(assets = colnames(returns_index_final_xts), category_labels = labels)
+port_l <- add.constraint(portfolio=port_l,type="long_only")
+minvar <- add.objective(portfolio=port_l, type="risk", name="var")
+opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvar, optimize_method="ROI", trace=TRUE)
+print(opt_minvar)
+```
+we would invest all in iboxx
+
+```{r}
+# allow for shortselling (NOT WORKING)
+portf_minvar <- portfolio.spec(assets=returns_index_final_xts)
+# Add full investment constraint to the portfolio object
+portf_minvar <- add.constraint(portfolio=portf_minvar, type="full_investment")
+minvar <- add.objective(portfolio=portf_minvar, type="risk", name="var")
+opt_minvar <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvar, optimize_method="ROI", trace=TRUE)
+print(opt_minvar)
+```
+
+#allow for short selling (delete the long_only condition)
+
+```{r}
+#allow for short selling (delete the long_only condition)
+mu <- colMeans(returns_index_final_xts); Sigma <- cov(returns_index_final_xts); 
+ones <- rep(1,ncol(returns_index_final_xts))
+wMVP <- t(solve(Sigma) %*% ones)/drop(ones %*% solve(Sigma) %*% ones)
+muMVP <- drop(wMVP%*%mu) 
+sigmaMVP <- drop(wMVP %*% Sigma %*% t(wMVP))^0.5
+srMVP <- muMVP/sigmaMVP
+round(cbind(wMVP,"mean"=muMVP,"sd"=sigmaMVP,"sr"=srMVP),4)
+```
+do it manually
+
+Calculate "mu" for each index separately to use them for calculation
+```{r}
+returns_eurostoxx <- monthly_returns_eurostoxx%>%
+  select(monthly_returns)
+returns_iboxx <- monthly_returns_iboxx%>%
+  select(monthly_returns)
+mu_iboxx <- lapply(returns_iboxx, FUN=mean)
+mu_iboxx
+mu_iboxx_numeric <- as.numeric(mu_iboxx)
+mu_eurostoxx <- lapply(returns_eurostoxx, FUN=mean)
+mu_eurostoxx
+mu_eurostoxx_numeric <- as.numeric(mu_eurostoxx)
+```
+Calculate "sigma" for each index separately
+```{r}
+sigma_iboxx <- as.numeric(lapply(returns_iboxx, FUN=sd))
+sigma_iboxx
+sigma_eurostoxx <- as.numeric(lapply(returns_eurostoxx, FUN=sd))
+sigma_eurostoxx
+```
+```{r}
+cor <- cor(returns_index_final_xts, y=NULL)
+cor_xy <- cor [1,2]
+cor_xy
+```
+
+```{r}
+abc <- sigma_iboxx^2-(sigma_eurostoxx*sigma_iboxx*cor_xy)
+covarianz_xy <- sigma_eurostoxx*sigma_iboxx*cor_xy
+xyz <- sigma_eurostoxx^2+sigma_iboxx^2-(2*sigma_eurostoxx*sigma_iboxx*cor_xy)
+MVP <- abc/xyz
+MVP
+```
+
+we do not invest in eurostoxx
+we invest everything in iboxx and sell eurostoxx to buy more iboxx
+
+for the minumum varianze portfolio
+
+
+
+
+c)	Now assume a risk-free rate of 0 and calculate the Tangency-Portfolio manually and with the `portfolioAnalytics`-package. What is the slope of the CAL? Plot a mu-sigma-diagram including all relevant information. What are your portfolio weights and weighted returns? Additionally allow for shortselling and check for changes.
+
+?portfolioAnalytics
+
+```{r}
+# construct the data
+asset.names = c("MSFT", "NORD", "SBUX")
+er = c(0.0427, 0.0015, 0.0285)
+names(er) = asset.names
+covmat = matrix(c(0.0100, 0.0018, 0.0011,
+                  0.0018, 0.0109, 0.0026,
+                  0.0011, 0.0026, 0.0199),
+                nrow=3, ncol=3)
+r.free = 0.005
+dimnames(covmat) = list(asset.names, asset.names)
+# compute tangency portfolio
+tan.port <- tangency.portfolio(er, covmat, r.free)
+tan.port
+summary(tan.port, risk.free=r.free)
+plot(tan.port, col="blue")
+# compute tangency portfolio with no short sales
+tan.port.ns <- tangency.portfolio(er, covmat, r.free, shorts=FALSE)
+tan.port.ns
+summary(tan.port.ns, risk.free=r.free)
+plot(tan.port.ns, col="blue")
+```
+?tangency.portfolio()
+
+```{r}
+# construct the data
+asset.names = c("Eurostxx_correct", "Iboxx_correct")
+er = c("mu_eurostoxx", "mu_iboxx")
+names(er) = asset.names
+covmat = matrix(c(0.0100, 0.0018, 0.0011,
+                  0.0018, 0.0109, 0.0026,
+                  0.0011, 0.0026, 0.0199),
+                nrow=3, ncol=3)
+r.free = 0.005
+dimnames(covmat) = list(asset.names, asset.names)
+# compute tangency portfolio
+tan.port <- tangency.portfolio(er, covmat, r.free)
+tan.port
+summary(tan.port, risk.free=r.free)
+plot(tan.port, col="blue")
+# compute tangency portfolio with no short sales
+tan.port.ns <- tangency.portfolio(er, covmat, r.free, shorts=FALSE)
+tan.port.ns
+summary(tan.port.ns, risk.free=r.free)
+plot(tan.port.ns, col="blue")
+```
+
+
+__tangency portfolio with package__
+```{r }
+wTP <- t(solve(Sigma) %*% (mu*ones))/drop(ones %*% solve(Sigma) %*% (mu*ones))
+muTP <- drop(wTP%*%mu); sigmaTP <- drop(wTP %*% Sigma %*% t(wTP))^0.5
+srTP <- (muTP)/sigmaTP; srTP2 <- sqrt(drop((mu*ones) %*% solve(Sigma) %*% (mu*ones)))
+round(cbind(wTP,"mean"=muTP,"sd"=sigmaTP,"sr"=srTP),4)
+```
+__tangency portfolio manually__
+
+maximize the sharp ratio
+```{r}
+weight_eurostoxx1 <- (mu_eurostoxx_numeric*sigma_iboxx^2)-(mu_iboxx_numeric*covarianz_xy)
+weight_eurostoxx2 <- (mu_eurostoxx_numeric*sigma_iboxx^2)+(mu_iboxx_numeric*sigma_eurostoxx^2)-((mu_eurostoxx_numeric+mu_iboxx_numeric)*covarianz_xy)
+weight_eurostoxx <- weight_eurostoxx1/weight_eurostoxx2
+weight_eurostoxx
+```
+__calculating sharpratio manually__
+
+mu tangency portfolio_ we calculate manually the sharp ratio}
+```{r}
+mean_tangencyportfolio <- (weight_eurostoxx)*mu_eurostoxx_numeric+((1-(weight_eurostoxx))*mu_iboxx_numeric)
+varianz_tangencyportfolio <- sqrt(((weight_eurostoxx)^2*(sigma_eurostoxx)^2)+(((1-(weight_eurostoxx))^2)*(sigma_iboxx)^2)+(2*weight_eurostoxx*(1-(weight_eurostoxx))*covarianz_xy))
+sr_tangencyportfolio <- mean_tangencyportfolio/varianz_tangencyportfolio
+sr_tangencyportfolio
+```
+__calculate slope__
+
+slope of the CAL would be the Sharpratio = -0.0334
+
+mu sigma diagram
+```{r}
+allsigmamu <- bind_rows(merge(sigma_eurostoxx, mu_eurostoxx_numeric), merge( sigma_iboxx,mu_iboxx_numeric))
+name <- c("EuroStoxx", "Iboxx")
+allsigmamuwithname <- allsigmamu %>% add_column(name)
+allsigmamuwithname
+```
+
+```{r}
+#rename the columns
+colnames(allsigmamuwithname) <- c("sigma", "mu", "name")
+allsigmamuwithname
+```
+
+```{r}
+ggplot(allsigmamuwithname, aes(sigma, mu)) +
+  geom_point() +
+  theme_classic() + geom_label_repel(aes(label=name),
+                            box.padding = 0.4,
+                            point.padding = 0.3,
+                            size=6)
+```
+Plot the efficient frontier
+```{r}
+port <- portfolio.spec(assets = colnames(returns_index_final_xts),
+                        category_labels = labels)
+port <- add.constraint(portfolio=port,
+                        type="full_investment")
+meanvar.portf <- add.objective(portfolio=port, 
+                       type="return",
+                       name="mean")
+meanvar.portf <- add.objective(portfolio=port, 
+                       type="risk",
+                       name="StDev")
+summary(meanvar.portf, digits=2)
+prt_ef <- create.EfficientFrontier(R=returns_index_final_xts, portfolio=port, type="mean-StdDev", match.col = "StdDev")
+chart.EfficientFrontier(prt_ef, match.col="StdDev", type="b", rf=NULL, pch.assets = 1)
+chart.EF.Weights(prt_ef, colorset=rainbow(n = length(labels)), match.col="StdDev", cex.lab = 1, main = "StdDev")
+```
+
+__calculate the weighted return manually__ 
+```{r}
+2.8329*mu_eurostoxx_numeric + -1.8329*mu_iboxx_numeric
+#our weighted return would be about 0.004
+```
+
+d)	Now, assume a risk-aversion of A=1, 2 or 3 and calculate your optimal complete portfolio (see lecture slides).
+
+
+```{r}
+mean_tangencyportfolio/(1*varianz_tangencyportfolio)
+```
+```{r}
+mean_tangencyportfolio/(2*varianz_tangencyportfolio)
+```
+
+```{r}
+mean_tangencyportfolio/(3*varianz_tangencyportfolio)
+```
+
+
+## Exercise 3: Covariance Problems
+
+*In the first part of this exercise we will be checking covariances and portfolios that might occur from faulty correlation matrices. We use the covariance matrix from our example*
+*{r cov, echo=FALSE, fig.cap="Faulty covariance matrix", out.width = '60%'}*
+*knitr::include_graphics("cov.png")*
+
+*where we additionally assume mean returns of 10% for all three assets.*
+*If we define $\mu$ to be the vector of mean returns and $\sigma$ the vector of standard deviations, we can calculate the covariance matrix $\Sigma$ as $\Sigma=diag(\sigma)\cdot R\cdot diag(\sigma)$, where $R$ is the correlation matrix (as in the table above) and $diag$ puts the three standard deviations into the diagonal of a matrix.*
+
+*So to get used to the necessary tools, we use the package "matrixcalc" wherein we have a function `is.positive.semi.definite()` that can check covariance/correlation matrices for positive semidefiniteness. In the package `Matrix` we find a function `nearPD` that can help us to create a valid correlation matrix. Try and calculate the weights of the MVP and the TP, and then calculate portfolio mean and variance using $\mu_P=w\cdot \mu'$ and $\sigma_P^2=w\cdot \Sigma\cdot w'$ for the MVP and the TP as well as the weight vector w=(-1,1,1). Do this for the faulty matrix as well as the corrected one. What do you observe?*
+
+
+
+### Theorie Input:
+
+- Eine **Korrelation** („Wechselbeziehung“). Beschreibt eine Beziehung zwischen zwei oder mehreren Merkmalen. Eine Korrelation als Maß des Zusammenhangs soll zwei Fragen klären:
+  - Wie stark ist der Zusammenhang? Korrelation = Die Maßzahlen der Korrelation liegen betragsmäßig meist in einem Bereich von **Null** (=kein Zusammenhang) bis **Eins** (=starker Zusammenhang).
+  - Falls möglich, welche Richtung hat der Zusammenhang? Negative oder postive!
+
+
+- Die **Kovarianz** (Varianz = Streuung) ist in der Stochastik ein nichtstandardisiertes Zusammenhangsmaß für einen monotonen Zusammenhang zweier Zufallsvariablen mit gemeinsamer Wahrscheinlichkeitsverteilung. Der Wert dieser Kenngröße macht tendenzielle Aussagen darüber, ob hohe Werte der einen Zufallsvariablen eher mit hohen oder eher mit niedrigen Werten der anderen Zufallsvariablen einhergehen. Die Kovarianz gibt somit zwar die Richtung einer Beziehung zwischen zwei Zufallsvariablen an, über die Stärke des Zusammenhangs wird aber keine Aussage getroffen.
+  - Die Kovarianz ist **positiv**, wenn X und Y einen monotonen Zusammenhang besitzen, d. h., hohe (niedrige) Werte von X gehen mit hohen (niedrigen) Werten von Y einher.
+  - Die Kovarianz ist hingegen **negativ**, wenn X und Y einen gegensinnigen monotonen Zusammenhang aufweisen, d. h., hohe Werte der einen Zufallsvariablen gehen mit niedrigen Werten der anderen Zufallsvariablen einher und umgekehrt.
+  - Ist das Ergebnis **null**, so besteht kein monotoner Zusammenhang zwischen X und Y (Nichtmonotone Beziehungen sind aber möglich.).
+
+- Die *erwartete Rendite* eines Portfolios ist die erwartete Höhe der Renditen, die ein Portfolio erzielen kann.
+
+- Die **Standardabweichung** eines Portfolios misst den Betrag, um den die Renditen von seinem Mittelwert abweichen. Die Standardabweichung ist somit ein Maß für die Streubreite der Werte eines Merkmals rund um dessen Mittelwert (arithmetisches Mittel). Vereinfacht gesagt, ist die Standardabweichung die durchschnittliche Entfernung aller gemessenen Ausprägungen eines Merkmals vom Durchschnitt. Eine kleinere Standardabweichung gibt in der Regel an, dass die gemessenen Ausprägungen eines Merkmals eher enger um den Mittelwert liegen, eine größere Standardabweichung gibt eine stärkere Streuung an. Für normalverteilte Merkmale gilt die Faustformel, dass innerhalb der Entfernung einer Standardabweichung nach oben und unten vom Mittelwert rund 68 Prozent alle Antwortwerte liegen. Im Umkreis von zwei Standardabweichungen sind es rund 95 Prozent aller Werte. Bei größeren Abweichungen spricht man von Ausreißern.
+
+
+```{r} 
+# Erstellen der fehlerhaften/"faulty" Korrelations-Matrix nach den Angaben der Aufgabenstellung
+x1 <- c(1.00, 0.90, 0.90, 0.90, 1.00, 0.00, 0.90, 0.00, 1.00)
+R <- matrix(x1, 3)
+colnames(R) <- c("A", "B", "C")
+rownames(R) <- c("A", "B", "C")
+R
+```
+
+
+```{r}
+#Erstellen von Mu (10%) und der SD (20%)
+mu <- matrix(c(.1, .1, .1), 3)
+sd <- matrix(c(.20, .20, .20), 3)
+mu
+sd
+```
+
+```{r}
+#Erstellen einer Kovariance Matrix nach der gegebenen Formel: \Sigma=diag(\sigma)\cdot R\cdot diag(\sigma)
+#Erläuterung R ist die Korrelationsmatrix der Assets (A,B,C) und der Befehel "diag" setzt die drei Standardabweichungen in eine Diagonalmatrix [1x1].
+
+covariance_matrix <- diag(sd)*R*diag(sd)
+covariance_matrix
+
+```
+
+### Theorie Input:
+
+Ab jetzt können wird das Minimum-Variance Portfolio berechnet. Dazu verwenden wir die folgenden Matrixberechnungen:
+
+#### Das Minumum-Varianz Portfolio ##
+**Definition** 
+Das MVP beschreibt das Portfolio in der Portfoliokomniation, welche das Risiko minimiert und auf der Effizienzgrenze ganz links liegt Weil es kein Portfolio gibt, das bei gleichem Risiko eine höhere erwartete Rendite hat, ist es ein nach Markowitz effizientes Portfolio.
+
+**Berechnung**
+$w_MP=\frac{\Sigma^{-1}\cdot 1'}{1\cdot\Sigma^{-1}\cdot 1'}$
+
+#### Das Marktportfolio = Tangetialportfolio ##
+**Definition** 
+Das Marktportfolio besteht aus der gewichteten Summe einer jeden Anlage des Marktes. Es ist das bestmöglich diversifizierte Portfolio in der Portfoliotheorie bzw. im Capital Asset Pricing Model (CAPM), welches unabhängig von der Risiko-Rendite-Präferenz der Investoren ist. Das Marktportfolio liegt folglich auf der Effizienzgrenze und ist gleichzeitig das Tangentialportfolio an die Kapitalmarktlinie. Mittels einer Kombination aus der risikolosen Anlage und dem Marktportfolio kann dann die Kapitalmarktlinie gebildet werden. Im CAPM hat das Marktportfolio definitionsgemäß ein Beta ({\displaystyle \beta }\beta ) von eins und weist aufgrund der perfekten Diversifikation über sämtliche Anlagen nur noch systematisches Risiko (Marktrisiko) auf.
+
+[link] (https://de.wikipedia.org/wiki/Marktportfolio)
+
+**Berechnung**
+$w_TP=\frac{\Sigma^{-1}\cdot (\mu-r_f)'}{1\cdot\Sigma^{-1}\cdot (\mu-r_f)'}$.
+
+```{r}
+#Berechnung des MVP. Bemerkung: solve() berechnet die Inverse Matrix (x=A^-1) nach der Problemstellung  b = Ax!
+onevector <- matrix(c(1, 1, 1), 1)
+wmvpcalctop <- solve(covariance_matrix)%*%t(onevector)
+wmvpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%t(onevector))
+wmvp <- wmvpcalctop/wmvpcalcbottom
+wmvp
+sum(wmvp)
+
+```
+
+```{r}
+#Berechnunbg des Marktportfolio = Tangetialportfolio (mit rf = 3%)
+wtpcalctop <- (solve(covariance_matrix)%*%(mu-0.03))
+wtpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%(mu-0.03))
+wtp <- wtpcalctop/wtpcalcbottom
+wtp
+```
+**Achtung**: Wir sehen hier, dass die Gewichte vom MVP gleich den Gewichten vom TP sind!
+
+Wir testen nun jetzt, ob die Matrizen definit sind. Wieso: Mathematische Gesetzgebung in der Linearen Algebra: Eine quadratische symmetrische (bzw. hermitesche) Matrix ist genau dann positiv semidefinit,	wenn alle Eigenwerte größer oder gleich null sind. Wenn die Korrelations-Matrix nicht semi-positive definite ist, dann kann man eine negative varinave erhalten!  
+
+```{r}
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(R) 
+#FALSE: Das heisst die Matrix ist nicht semi-positive definite und dementsprechend einen Egenwert, der kleiner als 0 ist!
+is.positive.semi.definite(covariance_matrix)
+# FALSE: Das heisst die Matrix ist nicht semi-positive definite und dementsprechend einen Egenwert, der kleiner als 0 ist
+```
+
+```{r}
+#Wir berechnen nun die naheste semi-positive definite matrix mit dem Befehl "nearPD" und erstellen mit dieser und mit der Formel für die Kovarianz-Matrix eine neue gültige Kovarianz-Matrix
+R2 <- nearPD(R,keepDiag = TRUE) 
+R2 <- data.matrix(R2$mat) #entsprechende correlationsmatrix
+covmat2 <- diag(sd)*R2*diag(sd) #berechnung der covsrianzcematrix nach der bisherigen formel
+R2
+covmat2
+```
+
+```{r}
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(R2)
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(covmat2)
+# TRUE
+```
+
+```{r}
+# Wir berechnen nun das Minimum-Varianz Portfolio mit der neuen Matrizen
+wmvpcalctop2 <- solve(covmat2)%*%t(onevector)
+wmvpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%t(onevector))
+wmvp2 <- wmvpcalctop2/wmvpcalcbottom2
+wmvp2
+wmvp #Zum Vergleich
+
+```
+
+```{r}
+#Mu 
+mumvp <- t(wmvp)%*%mu
+mumvp2 <- t(wmvp2)%*%mu
+mumvp2
+mumvp #Zum Vergleich
+```
+
+```{r}
+#SD
+sdmvpcalc <- t(wmvp)%*%R%*%wmvp
+sdmvp <- sqrt(sdmvpcalc)
+sdmvpcalc2 <- t(wmvp2)%*%R2%*%wmvp2
+sdmvp2 <- sqrt(sdmvpcalc2)
+sdmvp2
+sdmvp #Zum Vergleich
+```
+
+```{r}
+#Berechnung des neuen Marktportfolio = Tangetialportfolio (mit rf = 3%)
+wtpcalctop2 <- (solve(covmat2)%*%(mu-0.03))
+wtpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%(mu-0.03))
+wtp2 <- wtpcalctop2/wtpcalcbottom2
+wtp2
+wtp #Zum Vergleich
+```
+
+```{r}
+#Mu
+muwtp <- t(wtp)%*%mu
+muwtp2 <- t(wtp2)%*%mu
+muwtp2
+muwtp #Zum Vergleich
+```
+
+```{r}
+#Standard Deviation
+sdwtpcalc <- t(wtp)%*%R%*%wtp
+sdwtp <- sqrt(sdwtpcalc)
+sdwtpcalc2 <- t(wtp2)%*%R2%*%wtp2
+sdwtp2 <- sqrt(sdwtpcalc2)
+sdwtp2
+sdwtp #Zum Vergleich
+```
+
+```{r}
+#Das (-1,1,1 ) gewichtete portfolio
+#Erstellen des Gewichte-Vektors 
+wv <- matrix(c(-1, 1, 1),3)
+wv
+```
+
+```{r}
+#Mu
+muwv <- t(wv)%*%mu
+muwv
+```
+
+```{r}
+#SD
+# Mit der fehlerhaften correlations-matrix
+sdwvcalc <- t(wv)%*%R%*%wv
+sdwv <- sqrt(sdwvcalc) # NaNS! 
+sdwv
+# Mit der gültigen correlations-matrix
+sdwvcalc <- t(wmvp2)%*%R2%*%wmvp2
+sdwv2 <- sqrt(sdwvcalc)
+sdwv2
+
+```
+```{r}
+# Alles Auf eine Blick:
+
+# Fehlerhafte Correlationsmatrix
+R
+covariance_matrix
+wmvp
+wtp
+mumvp
+sdmvp
+
+# Valide Correlationsmatrix
+R2
+covmat2
+wmvp2
+wtp2
+mumvp2
+sdmvp2
+
+# Mit gegebenen Gewichten
+wv
+muwv; sdwv
+
+```
+```{r}
+# Mit einer Funktion:
+# The portfolio can allow all assets to be shorted or not allow any assets to be shorted. The returned object is of class portfolio. 
+# TRUE then short sales (negative portfolio weights) are allowed. 
+#If FALSE then no asset is allowed to be sold short.)
+download.file(url="http://freakonometrics.free.fr/portfolio.r",destfile = "portfolio.r")
+source("portfolio.r")
+
+
+# Fehlerhafte Correlationsmatrix !!!! Funktioniert eben wegen der fehlerhaften Corr-Mat nicht!
+globalMin.portfolio(mu, covariance_matrix, shorts = TRUE)
+weights <- globalMin.portfolio(mu, covmat, shorts = FALSE)
+weights.weights <-as.numeric(unlist(weights$weights))
+pie(weights.weights, labels = colnames(R), main="Pie Pie Chart of Weights of invalid Corr-Mat of Weights")
+
+# Valide Correlationsmatrix
+globalMin.portfolio(mu, covmat2, shorts = TRUE)
+globalMin.portfolio(mu, covmat2, shorts = FALSE)
+weights <- globalMin.portfolio(mu, covmat2, shorts = FALSE)
+weights.weights <-as.numeric(unlist(weights$weights))
+pie(weights.weights, labels = colnames(R), main="Pie Chart of Weights of valid Corr-Mat")
+
+````
