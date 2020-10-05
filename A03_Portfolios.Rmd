@@ -549,4 +549,256 @@ $w_TP=\frac{\Sigma^{-1}\cdot (\mu-r_f)'}{1\cdot\Sigma^{-1}\cdot (\mu-r_f)'}$.
 
 So to get used to the necessary tools, we use the package "matrixcalc" wherein we have a function `is.positive.semi.definite()` that can check covariance/correlation matrices for positive semidefiniteness. In the package `Matrix` we find a function `nearPD` that can help us to create a valid correlation matrix. Try and calculate the weights of the MVP and the TP, and then calculate portfolio mean and variance using $\mu_P=w\cdot \mu'$ and $\sigma_P^2=w\cdot \Sigma\cdot w'$ for the MVP and the TP as well as the weight vector w=(-1,1,1). Do this for the faulty matrix as well as the corrected one. What do you observe?
 
+*In the first part of this exercise we will be checking covariances and portfolios that might occur from faulty correlation matrices. We use the covariance matrix from our example*
+*{r cov, echo=FALSE, fig.cap="Faulty covariance matrix", out.width = '60%'}*
+*knitr::include_graphics("cov.png")*
+
+*where we additionally assume mean returns of 10% for all three assets.*
+*If we define $\mu$ to be the vector of mean returns and $\sigma$ the vector of standard deviations, we can calculate the covariance matrix $\Sigma$ as $\Sigma=diag(\sigma)\cdot R\cdot diag(\sigma)$, where $R$ is the correlation matrix (as in the table above) and $diag$ puts the three standard deviations into the diagonal of a matrix.*
+
+*So to get used to the necessary tools, we use the package "matrixcalc" wherein we have a function `is.positive.semi.definite()` that can check covariance/correlation matrices for positive semidefiniteness. In the package `Matrix` we find a function `nearPD` that can help us to create a valid correlation matrix. Try and calculate the weights of the MVP and the TP, and then calculate portfolio mean and variance using $\mu_P=w\cdot \mu'$ and $\sigma_P^2=w\cdot \Sigma\cdot w'$ for the MVP and the TP as well as the weight vector w=(-1,1,1). Do this for the faulty matrix as well as the corrected one. What do you observe?*
+
+
+
+### Theorie Input:
+
+- Eine **Korrelation** („Wechselbeziehung“). Beschreibt eine Beziehung zwischen zwei oder mehreren Merkmalen. Eine Korrelation als Maß des Zusammenhangs soll zwei Fragen klären:
+  - Wie stark ist der Zusammenhang? Korrelation = Die Maßzahlen der Korrelation liegen betragsmäßig meist in einem Bereich von **Null** (=kein Zusammenhang) bis **Eins** (=starker Zusammenhang).
+  - Falls möglich, welche Richtung hat der Zusammenhang? Negative oder postive!
+
+
+- Die **Kovarianz** (Varianz = Streuung) ist in der Stochastik ein nichtstandardisiertes Zusammenhangsmaß für einen monotonen Zusammenhang zweier Zufallsvariablen mit gemeinsamer Wahrscheinlichkeitsverteilung. Der Wert dieser Kenngröße macht tendenzielle Aussagen darüber, ob hohe Werte der einen Zufallsvariablen eher mit hohen oder eher mit niedrigen Werten der anderen Zufallsvariablen einhergehen. Die Kovarianz gibt somit zwar die Richtung einer Beziehung zwischen zwei Zufallsvariablen an, über die Stärke des Zusammenhangs wird aber keine Aussage getroffen.
+  - Die Kovarianz ist **positiv**, wenn X und Y einen monotonen Zusammenhang besitzen, d. h., hohe (niedrige) Werte von X gehen mit hohen (niedrigen) Werten von Y einher.
+  - Die Kovarianz ist hingegen **negativ**, wenn X und Y einen gegensinnigen monotonen Zusammenhang aufweisen, d. h., hohe Werte der einen Zufallsvariablen gehen mit niedrigen Werten der anderen Zufallsvariablen einher und umgekehrt.
+  - Ist das Ergebnis **null**, so besteht kein monotoner Zusammenhang zwischen X und Y (Nichtmonotone Beziehungen sind aber möglich.).
+
+- Die *erwartete Rendite* eines Portfolios ist die erwartete Höhe der Renditen, die ein Portfolio erzielen kann.
+
+- Die **Standardabweichung** eines Portfolios misst den Betrag, um den die Renditen von seinem Mittelwert abweichen. Die Standardabweichung ist somit ein Maß für die Streubreite der Werte eines Merkmals rund um dessen Mittelwert (arithmetisches Mittel). Vereinfacht gesagt, ist die Standardabweichung die durchschnittliche Entfernung aller gemessenen Ausprägungen eines Merkmals vom Durchschnitt. Eine kleinere Standardabweichung gibt in der Regel an, dass die gemessenen Ausprägungen eines Merkmals eher enger um den Mittelwert liegen, eine größere Standardabweichung gibt eine stärkere Streuung an. Für normalverteilte Merkmale gilt die Faustformel, dass innerhalb der Entfernung einer Standardabweichung nach oben und unten vom Mittelwert rund 68 Prozent alle Antwortwerte liegen. Im Umkreis von zwei Standardabweichungen sind es rund 95 Prozent aller Werte. Bei größeren Abweichungen spricht man von Ausreißern.
+
+
+```{r} 
+# Erstellen der fehlerhaften/"faulty" Korrelations-Matrix nach den Angaben der Aufgabenstellung
+x1 <- c(1.00, 0.90, 0.90, 0.90, 1.00, 0.00, 0.90, 0.00, 1.00)
+R <- matrix(x1, 3)
+colnames(R) <- c("A", "B", "C")
+rownames(R) <- c("A", "B", "C")
+R
+```
+
+
+```{r}
+#Erstellen von Mu (10%) und der SD (20%)
+mu <- matrix(c(.1, .1, .1), 3)
+sd <- matrix(c(.20, .20, .20), 3)
+mu
+sd
+```
+
+```{r}
+#Erstellen einer Kovariance Matrix nach der gegebenen Formel: \Sigma=diag(\sigma)\cdot R\cdot diag(\sigma)
+#Erläuterung R ist die Korrelationsmatrix der Assets (A,B,C) und der Befehel "diag" setzt die drei Standardabweichungen in eine Diagonalmatrix [1x1].
+
+covariance_matrix <- diag(sd)*R*diag(sd)
+covariance_matrix
+
+```
+
+### Theorie Input:
+
+Ab jetzt können wird das Minimum-Variance Portfolio berechnet. Dazu verwenden wir die folgenden Matrixberechnungen:
+
+#### Das Minumum-Varianz Portfolio ##
+**Definition** 
+Das MVP beschreibt das Portfolio in der Portfoliokomniation, welche das Risiko minimiert und auf der Effizienzgrenze ganz links liegt Weil es kein Portfolio gibt, das bei gleichem Risiko eine höhere erwartete Rendite hat, ist es ein nach Markowitz effizientes Portfolio.
+
+**Berechnung**
+$w_MP=\frac{\Sigma^{-1}\cdot 1'}{1\cdot\Sigma^{-1}\cdot 1'}$
+
+#### Das Marktportfolio = Tangetialportfolio ##
+**Definition** 
+Das Marktportfolio besteht aus der gewichteten Summe einer jeden Anlage des Marktes. Es ist das bestmöglich diversifizierte Portfolio in der Portfoliotheorie bzw. im Capital Asset Pricing Model (CAPM), welches unabhängig von der Risiko-Rendite-Präferenz der Investoren ist. Das Marktportfolio liegt folglich auf der Effizienzgrenze und ist gleichzeitig das Tangentialportfolio an die Kapitalmarktlinie. Mittels einer Kombination aus der risikolosen Anlage und dem Marktportfolio kann dann die Kapitalmarktlinie gebildet werden. Im CAPM hat das Marktportfolio definitionsgemäß ein Beta ({\displaystyle \beta }\beta ) von eins und weist aufgrund der perfekten Diversifikation über sämtliche Anlagen nur noch systematisches Risiko (Marktrisiko) auf.
+
+[link] (https://de.wikipedia.org/wiki/Marktportfolio)
+
+**Berechnung**
+$w_TP=\frac{\Sigma^{-1}\cdot (\mu-r_f)'}{1\cdot\Sigma^{-1}\cdot (\mu-r_f)'}$.
+
+```{r}
+#Berechnung des MVP. Bemerkung: solve() berechnet die Inverse Matrix (x=A^-1) nach der Problemstellung  b = Ax!
+onevector <- matrix(c(1, 1, 1), 1)
+wmvpcalctop <- solve(covariance_matrix)%*%t(onevector)
+wmvpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%t(onevector))
+wmvp <- wmvpcalctop/wmvpcalcbottom
+wmvp
+sum(wmvp)
+
+```
+
+```{r}
+#Berechnunbg des Marktportfolio = Tangetialportfolio (mit rf = 3%)
+wtpcalctop <- (solve(covariance_matrix)%*%(mu-0.03))
+wtpcalcbottom <- as.numeric(onevector%*%solve(covariance_matrix)%*%(mu-0.03))
+wtp <- wtpcalctop/wtpcalcbottom
+wtp
+```
+**Achtung**: Wir sehen hier, dass die Gewichte vom MVP gleich den Gewichten vom TP sind!
+
+Wir testen nun jetzt, ob die Matrizen definit sind. Wieso: Mathematische Gesetzgebung in der Linearen Algebra: Eine quadratische symmetrische (bzw. hermitesche) Matrix ist genau dann positiv semidefinit,	wenn alle Eigenwerte größer oder gleich null sind. Wenn die Korrelations-Matrix nicht semi-positive definite ist, dann kann man eine negative varinave erhalten!  
+
+```{r}
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(R) 
+#FALSE: Das heisst die Matrix ist nicht semi-positive definite und dementsprechend einen Egenwert, der kleiner als 0 ist!
+is.positive.semi.definite(covariance_matrix)
+# FALSE: Das heisst die Matrix ist nicht semi-positive definite und dementsprechend einen Egenwert, der kleiner als 0 ist
+```
+
+```{r}
+#Wir berechnen nun die naheste semi-positive definite matrix mit dem Befehl "nearPD" und erstellen mit dieser und mit der Formel für die Kovarianz-Matrix eine neue gültige Kovarianz-Matrix
+R2 <- nearPD(R,keepDiag = TRUE) 
+R2 <- data.matrix(R2$mat) #entsprechende correlationsmatrix
+covmat2 <- diag(sd)*R2*diag(sd) #berechnung der covsrianzcematrix nach der bisherigen formel
+R2
+covmat2
+```
+
+```{r}
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(R2)
+# Test ob die Matrizen semi-positive definite sind: 
+is.positive.semi.definite(covmat2)
+# TRUE
+```
+
+```{r}
+# Wir berechnen nun das Minimum-Varianz Portfolio mit der neuen Matrizen
+wmvpcalctop2 <- solve(covmat2)%*%t(onevector)
+wmvpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%t(onevector))
+wmvp2 <- wmvpcalctop2/wmvpcalcbottom2
+wmvp2
+wmvp #Zum Vergleich
+
+```
+
+```{r}
+#Mu 
+mumvp <- t(wmvp)%*%mu
+mumvp2 <- t(wmvp2)%*%mu
+mumvp2
+mumvp #Zum Vergleich
+```
+
+```{r}
+#SD
+sdmvpcalc <- t(wmvp)%*%R%*%wmvp
+sdmvp <- sqrt(sdmvpcalc)
+sdmvpcalc2 <- t(wmvp2)%*%R2%*%wmvp2
+sdmvp2 <- sqrt(sdmvpcalc2)
+sdmvp2
+sdmvp #Zum Vergleich
+```
+
+```{r}
+#Berechnung des neuen Marktportfolio = Tangetialportfolio (mit rf = 3%)
+wtpcalctop2 <- (solve(covmat2)%*%(mu-0.03))
+wtpcalcbottom2 <- as.numeric(onevector%*%solve(covmat2)%*%(mu-0.03))
+wtp2 <- wtpcalctop2/wtpcalcbottom2
+wtp2
+wtp #Zum Vergleich
+```
+
+```{r}
+#Mu
+muwtp <- t(wtp)%*%mu
+muwtp2 <- t(wtp2)%*%mu
+muwtp2
+muwtp #Zum Vergleich
+```
+
+```{r}
+#Standard Deviation
+sdwtpcalc <- t(wtp)%*%R%*%wtp
+sdwtp <- sqrt(sdwtpcalc)
+sdwtpcalc2 <- t(wtp2)%*%R2%*%wtp2
+sdwtp2 <- sqrt(sdwtpcalc2)
+sdwtp2
+sdwtp #Zum Vergleich
+```
+
+```{r}
+#Das (-1,1,1 ) gewichtete portfolio
+#Erstellen des Gewichte-Vektors 
+wv <- matrix(c(-1, 1, 1),3)
+wv
+```
+
+```{r}
+#Mu
+muwv <- t(wv)%*%mu
+muwv
+```
+
+```{r}
+#SD
+# Mit der fehlerhaften correlations-matrix
+sdwvcalc <- t(wv)%*%R%*%wv
+sdwv <- sqrt(sdwvcalc) # NaNS! 
+sdwv
+# Mit der gültigen correlations-matrix
+sdwvcalc <- t(wmvp2)%*%R2%*%wmvp2
+sdwv2 <- sqrt(sdwvcalc)
+sdwv2
+
+```
+
+```{r}
+# Alles Auf eine Blick:
+
+# Fehlerhafte Correlationsmatrix
+R
+covariance_matrix
+wmvp
+wtp
+mumvp
+sdmvp
+
+# Valide Correlationsmatrix
+R2
+covmat2
+wmvp2
+wtp2
+mumvp2
+sdmvp2
+
+# Mit gegebenen Gewichten
+wv
+muwv; sdwv
+
+```
+
+```{r}
+# Mit einer Funktion:
+# The portfolio can allow all assets to be shorted or not allow any assets to be shorted. The returned object is of class portfolio. 
+# TRUE then short sales (negative portfolio weights) are allowed. 
+#If FALSE then no asset is allowed to be sold short.)
+download.file(url="http://freakonometrics.free.fr/portfolio.r",destfile = "portfolio.r")
+source("portfolio.r")
+
+
+# Fehlerhafte Correlationsmatrix !!!! Funktioniert eben wegen der fehlerhaften Corr-Mat nicht!
+globalMin.portfolio(mu, covariance_matrix, shorts = TRUE)
+weights <- globalMin.portfolio(mu, covmat, shorts = FALSE)
+weights.weights <-as.numeric(unlist(weights$weights))
+pie(weights.weights, labels = colnames(R), main="Pie Pie Chart of Weights of invalid Corr-Mat of Weights")
+
+# Valide Correlationsmatrix
+globalMin.portfolio(mu, covmat2, shorts = TRUE)
+globalMin.portfolio(mu, covmat2, shorts = FALSE)
+weights <- globalMin.portfolio(mu, covmat2, shorts = FALSE)
+weights.weights <-as.numeric(unlist(weights$weights))
+pie(weights.weights, labels = colnames(R), main="Pie Chart of Weights of valid Corr-Mat")
+
+```
+
 
