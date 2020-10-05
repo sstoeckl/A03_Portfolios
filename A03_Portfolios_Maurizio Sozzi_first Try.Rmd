@@ -536,19 +536,24 @@ for the minumum varianze portfolio
 
 c)	Now assume a risk-free rate of 0 and calculate the Tangency-Portfolio manually and with the `portfolioAnalytics`-package. What is the slope of the CAL? Plot a mu-sigma-diagram including all relevant information. What are your portfolio weights and weighted returns? Additionally allow for shortselling and check for changes.
 
-?portfolioAnalytics
-
-
 
 
 __tangency portfolio with package__
-```{r }
-wTP <- t(solve(Sigma) %*% (mu*ones))/drop(ones %*% solve(Sigma) %*% (mu*ones))
-muTP <- drop(wTP%*%mu); sigmaTP <- drop(wTP %*% Sigma %*% t(wTP))^0.5
-srTP <- (muTP)/sigmaTP; srTP2 <- sqrt(drop((mu*ones) %*% solve(Sigma) %*% (mu*ones)))
-round(cbind(wTP,"mean"=muTP,"sd"=sigmaTP,"sr"=srTP),4)
+
+
+```{r}
+portf_minvar_tp <- portfolio.spec(assets = colnames(returns_index_final_xts), category_labels = labels)
+
+portf_minvar_tp <- add.constraint(portfolio=portf_minvar_tp, type="full_investment")
+portf_minvar_tp <- add.constraint(portfolio=portf_minvar_tp, type="box", min=-1, max=2)
+
+minvartp <- add.objective(portfolio=portf_minvar_tp, type="risk", name="var")
+minvartp <- add.objective(portfolio=portf_minvar_tp, type="return", name="mean")
+
+opt_minvar_tp <- optimize.portfolio(R=returns_index_final_xts, portfolio=minvartp, optimize_method="ROI", trace=TRUE, maxSR=TRUE)
+print(opt_minvar_tp)
 ```
-A negative Sharpe ratio means that the performance of a manager or portfolio is below the risk-free rate. 
+
 
 __tangency portfolio manually__ maximize the sharp ratio
 
@@ -580,9 +585,11 @@ sd_tangencyportfolio <- sqrt(((weight_eurostoxx)^2*(sigma_eurostoxx)^2)+(((1-(we
 sr_tangencyportfolio <- (mean_tangencyportfolio-0)/sd_tangencyportfolio
 sr_tangencyportfolio
 ```
+A negative Sharpe ratio means the portfolio has underperformed its benchmark.
+
 __calculate slope__
 
-slope of the CAL would be the Sharpratio = -0.0268
+slope of the CAL (Capital asset line) would be the Sharpratio = -0.0268
 
 
 
@@ -645,14 +652,15 @@ d)	Now, assume a risk-aversion of A=1, 2 or 3 and calculate your optimal complet
 
 
 ```{r}
-mean_tangencyportfolio/(1*varianz_tangencyportfolio)
-```
-```{r}
-mean_tangencyportfolio/(2*varianz_tangencyportfolio)
+mean_tangencyportfolio/(1*sd_tangencyportfolio^2)
 ```
 
 ```{r}
-mean_tangencyportfolio/(3*varianz_tangencyportfolio)
+mean_tangencyportfolio/(2*sd_tangencyportfolio^2)
+```
+
+```{r}
+mean_tangencyportfolio/(3*sd_tangencyportfolio^2)
 ```
 
 
